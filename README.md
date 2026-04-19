@@ -97,3 +97,4 @@ Build and run instructions are in `backend/README.md`.
 - Serve frontend with `--bind 0.0.0.0`.
 - Open Windows firewall for your backend/frontend ports (`8080` and `5500`) if needed.
 - Use your PC local IP from your phone browser: `http://<YOUR_PC_IP>:5500`.
+
