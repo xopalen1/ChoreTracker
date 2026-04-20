@@ -30,7 +30,11 @@ This is a fun, non-serious project.
 Recommended: start frontend and backend together from the project root.
 
 ```powershell
-.\start-app.ps1
+.\windows\start-app.ps1
+```
+
+```bash
+./linux/start-app.sh
 ```
 
 Then open:
@@ -43,9 +47,15 @@ Manual setup options:
 ### Option 1: Build and run backend, then serve frontend
 
 ```powershell
-.\backend\build.ps1
+.\windows\build-backend.ps1
 .\backend\bin\roommate_backend.exe 8080
 python -m http.server 5500 --bind 0.0.0.0
+```
+
+```bash
+./linux/build-backend.sh
+./backend/bin/roommate_backend 8080
+python3 -m http.server 5500 --bind 0.0.0.0
 ```
 
 ### Option 2: Node serve package for frontend
@@ -55,6 +65,16 @@ npx serve .
 ```
 
 Use this only after the backend is already running on port `8080`.
+
+To stop both services:
+
+```powershell
+.\windows\stop-app.ps1
+```
+
+```bash
+./linux/stop-app.sh
+```
 
 ## API Configuration
 

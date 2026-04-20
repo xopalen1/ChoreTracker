@@ -1,11 +1,12 @@
 $ErrorActionPreference = "Stop"
 
-$root = $PSScriptRoot
+$scriptRoot = $PSScriptRoot
+$root = Split-Path -Parent $scriptRoot
 Set-Location $root
 $pidFile = Join-Path $root ".app-pids.json"
 
 $backendExe = Join-Path $root "backend\bin\roommate_backend.exe"
-$backendBuildScript = Join-Path $root "backend\build.ps1"
+$backendBuildScript = Join-Path $scriptRoot "build-backend.ps1"
 
 if (!(Test-Path $backendExe)) {
   Write-Host "Backend binary not found. Building backend..."

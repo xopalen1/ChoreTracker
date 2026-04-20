@@ -1,8 +1,10 @@
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$src = Join-Path $root "src"
-$outDir = Join-Path $root "bin"
+$scriptRoot = $PSScriptRoot
+$root = Split-Path -Parent $scriptRoot
+$backendRoot = Join-Path $root "backend"
+$src = Join-Path $backendRoot "src"
+$outDir = Join-Path $backendRoot "bin"
 $outFile = Join-Path $outDir "roommate_backend.exe"
 
 if (!(Test-Path $outDir)) {
@@ -25,7 +27,7 @@ $cl = Get-Command cl -ErrorAction SilentlyContinue
 $gcc = Get-Command gcc -ErrorAction SilentlyContinue
 
 if ($cl) {
-  Push-Location $root
+  Push-Location $backendRoot
   & cl /std:c23 /W4 /I include /Fe:$outFile $files ws2_32.lib
   Pop-Location
   Write-Host "Built with MSVC: $outFile"
@@ -33,7 +35,7 @@ if ($cl) {
 }
 
 if ($gcc) {
-  & gcc -std=c2x -Wall -Wextra -I "$root/include" @files -o "$outFile" -lws2_32
+  & gcc -std=c2x -Wall -Wextra -I "$backendRoot/include" @files -o "$outFile" -lws2_32
   Write-Host "Built with GCC: $outFile"
   exit 0
 }

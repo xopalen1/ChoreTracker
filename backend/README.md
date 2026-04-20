@@ -32,7 +32,15 @@ It serves the frontend API contract from `docs/BACKEND_INTEGRATION.md`.
 From project root:
 
 ```powershell
-.\backend\build.ps1
+.\windows\build-backend.ps1
+```
+
+## Build (Linux/macOS)
+
+From project root:
+
+```bash
+./linux/build-backend.sh
 ```
 
 This produces:
@@ -43,6 +51,10 @@ This produces:
 
 ```powershell
 .\backend\bin\roommate_backend.exe 8080
+```
+
+```bash
+./backend/bin/roommate_backend 8080
 ```
 
 The backend binds to all interfaces (`0.0.0.0`) so devices on the same Wi-Fi can connect using your PC IP.

@@ -29,12 +29,12 @@
 *.dylib
 
 # Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+backend/bin/*.exe
+backend/bin/*.out
+backend/bin/*.app
+backend/bin/*.i*86
+backend/bin/*.x86_64
+backend/bin/*.hex
 
 # Debug files
 *.dSYM/
@@ -53,3 +53,6 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# runtime data files
+backend/data/*.csv

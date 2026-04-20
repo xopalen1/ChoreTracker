@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
-$root = $PSScriptRoot
+$scriptRoot = $PSScriptRoot
+$root = Split-Path -Parent $scriptRoot
 Set-Location $root
 $pidFile = Join-Path $root ".app-pids.json"
 
