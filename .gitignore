@@ -30,6 +30,7 @@
 
 # Executables
 backend/bin/*
+!backend/bin/.gitkeep
 
 
 # Debug files
@@ -52,3 +53,4 @@ dkms.conf
 
 # runtime data files
 backend/data/*
+!backend/data/.gitkeep
