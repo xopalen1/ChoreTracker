@@ -18,15 +18,13 @@ FILES=(
   "$SRC/router.c"
   "$SRC/db.c"
   "$SRC/json_utils.c"
-  "$SRC/text_utils.c"
+  "$SRC/text_utils.c  "$SRC/text_utils.c"
   "$SRC/string_builder.c"
   "$SRC/date_utils.c"
   "$SRC/handlers_chores.c"
   "$SRC/handlers_messages.c"
   "$SRC/handlers_roommates.c"
-)
-
-if command -v gcc >/dev/null 2>&1; then
+ull 2>&1; then
   gcc -std=c2x -Wall -Wextra -I "$BACKEND_ROOT/include" "${FILES[@]}" -o "$OUT_FILE"
   echo "Built with GCC: $OUT_FILE"
   exit 0

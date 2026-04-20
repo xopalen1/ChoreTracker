@@ -3,18 +3,7 @@
 #include <stdio.h>
 #include <time.h>
 
-void date_today_iso(char *out, size_t out_size) {
-  time_t now = time(NULL);
-  struct tm tmv;
-#ifdef _WIN32
-  localtime_s(&tmv, &now);
-#else
-  localtime_r(&now, &tmv);
-#endif
-  strftime(out, out_size, "%Y-%m-%d", &tmv);
-}
-
-void date_next_sunday_iso(char *out, size_t out_size) {
+void date_today_plus_days_iso(int days, char *out, size_t out_size) {
   time_t now = time(NULL);
   struct tm tmv;
 #ifdef _WIN32
@@ -23,10 +12,8 @@ void date_next_sunday_iso(char *out, size_t out_size) {
   localtime_r(&now, &tmv);
 #endif
 
-  int days_until_sunday = (7 - tmv.tm_wday) % 7;
-  tmv.tm_mday += days_until_sunday;
+  tmv.tm_mday += days;
   mktime(&tmv);
-
   strftime(out, out_size, "%Y-%m-%d", &tmv);
 }
 

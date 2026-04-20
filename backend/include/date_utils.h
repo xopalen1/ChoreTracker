@@ -3,8 +3,7 @@
 
 #include <stddef.h>
 
-void date_today_iso(char *out, size_t out_size);
-void date_next_sunday_iso(char *out, size_t out_size);
+void date_today_plus_days_iso(int days, char *out, size_t out_size);
 void date_now_iso_datetime(char *out, size_t out_size);
 
 #endif

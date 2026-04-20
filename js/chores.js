@@ -1,5 +1,6 @@
 function createChoresModule(context) {
   const { state, el, api, utils } = context;
+  let pendingDeleteId = null;
 
   function bindEvents() {
     el.filterStatus?.addEventListener("change", () => {
@@ -25,6 +26,9 @@ function createChoresModule(context) {
         el.assigneeSelect.value = "";
         el.assigneeSelect.selectedIndex = 0;
         el.assigneeSelect.setCustomValidity("");
+      }
+      if (el.autoReassignInput instanceof HTMLInputElement) {
+        el.autoReassignInput.checked = false;
       }
       if (el.dueDateInput instanceof HTMLInputElement) {
         el.dueDateInput.value = utils.isoToDmy(utils.todayPlusDays(1));
@@ -59,9 +63,14 @@ function createChoresModule(context) {
       state.editingDueDateId = null;
       el.editDueDateDialog?.close();
     });
+    el.cancelDeleteBtn?.addEventListener("click", () => {
+      pendingDeleteId = null;
+      el.deleteConfirmDialog?.close();
+    });
 
     el.choreForm?.addEventListener("submit", handleCreateChore);
     el.roommateForm?.addEventListener("submit", handleCreateRoommate);
+    el.deleteConfirmForm?.addEventListener("submit", handleDeleteConfirmSubmit);
 
     if (el.editDueDateInput instanceof HTMLInputElement) {
       el.editDueDateInput.addEventListener("input", () => {
@@ -143,6 +152,7 @@ function createChoresModule(context) {
 
     const title = String(formData.get("title")).trim();
     const assignee = String(formData.get("assignee")).trim();
+    const autoReassign = formData.get("autoReassign") === "on";
 
     const isKnownRoommate = state.roommates.some(
       (roommate) => roommate.name.toLocaleLowerCase() === assignee.toLocaleLowerCase(),
@@ -163,6 +173,7 @@ function createChoresModule(context) {
       title,
       assignee,
       dueDate: dueDateIso,
+      autoReassign,
     };
 
     try {
@@ -239,8 +250,12 @@ function createChoresModule(context) {
       previousDueDate: chore.dueDate,
       newDueDate: nextDueDate,
       editedAt: new Date().toISOString(),
+      assignee: chore.assignee,
     };
-    const nextHistory = [...(chore.dueDateHistory || []), historyEntry];
+    const scopedHistory = (chore.dueDateHistory || []).filter(
+      (entry) => String(entry?.assignee || "") === String(chore.assignee || ""),
+    );
+    const nextHistory = [...scopedHistory, historyEntry];
 
     try {
       const updated = await api.updateChore(chore.id, {
@@ -271,6 +286,10 @@ function createChoresModule(context) {
       state.chores = state.chores.map((entry) =>
         entry.id === id ? normalizeChore(updated) : entry,
       );
+
+      if (nextIsDone && updated.autoReassign && !updated.isDone && typeof context.refreshChatMessages === "function") {
+        await context.refreshChatMessages();
+      }
     } catch (error) {
       console.error(error);
       return;
@@ -281,17 +300,32 @@ function createChoresModule(context) {
 
   async function handleDelete(id) {
     if (!state.chores.find((entry) => entry.id === id)) return;
+    pendingDeleteId = id;
+    const chore = state.chores.find((entry) => entry.id === id);
+    if (el.deleteConfirmText) {
+      const choreTitle = chore?.title ? `"${chore.title}"` : "túto úlohu";
+      el.deleteConfirmText.textContent = `Naozaj chceš vymazať ${choreTitle}?`;
+    }
+    el.deleteConfirmDialog?.showModal();
+  }
+
+  async function handleDeleteConfirmSubmit(event) {
+    event.preventDefault();
+    if (!pendingDeleteId) {
+      el.deleteConfirmDialog?.close();
+      return;
+    }
 
     try {
-      const updated = await api.updateChore(id, { isDeleted: true });
-      state.chores = state.chores.map((entry) =>
-        entry.id === id ? normalizeChore(updated) : entry,
-      );
+      await api.deleteChore(pendingDeleteId);
+      state.chores = state.chores.filter((entry) => entry.id !== pendingDeleteId);
     } catch (error) {
       console.error(error);
       return;
     }
 
+    pendingDeleteId = null;
+    el.deleteConfirmDialog?.close();
     render();
   }
 
@@ -310,9 +344,9 @@ function createChoresModule(context) {
   function filteredChores() {
     return state.chores.filter((chore) => {
       const matchesStatus =
-        (state.filterStatus === "all" && !chore.isDeleted) ||
-        (state.filterStatus === "open" && !chore.isDone && !chore.isDeleted) ||
-        (state.filterStatus === "done" && chore.isDone && !chore.isDeleted);
+        state.filterStatus === "all" ||
+        (state.filterStatus === "open" && !chore.isDone) ||
+        (state.filterStatus === "done" && chore.isDone);
       const searchable = `${chore.title} ${chore.assignee}`.toLowerCase();
       const matchesSearch = searchable.includes(state.searchTerm);
       return matchesStatus && matchesSearch;
@@ -323,8 +357,8 @@ function createChoresModule(context) {
     renderStats();
 
     const chores = filteredChores().sort((a, b) => a.assignedDate.localeCompare(b.assignedDate));
-    const activeChores = chores.filter((chore) => !chore.isDone && !chore.isDeleted);
-    const doneChores = chores.filter((chore) => chore.isDone && !chore.isDeleted);
+    const activeChores = chores.filter((chore) => !chore.isDone);
+    const doneChores = chores.filter((chore) => chore.isDone);
     if (!el.choreList) return;
     el.choreList.innerHTML = "";
 
@@ -378,7 +412,8 @@ function createChoresModule(context) {
 
     if (title) title.textContent = chore.title;
     if (meta) {
-      meta.textContent = `${chore.assignee} • Priradené ${utils.formatDate(chore.assignedDate)} • Deadline ${utils.formatDate(chore.dueDate)}`;
+      const reassignNote = chore.autoReassign ? " • Auto prerozdelenie" : "";
+      meta.textContent = `${chore.assignee} • Priradené ${utils.formatDate(chore.assignedDate)} • Deadline ${utils.formatDate(chore.dueDate)}${reassignNote}`;
     }
 
     if (toggleBtn) {
@@ -386,7 +421,9 @@ function createChoresModule(context) {
       toggleBtn.textContent = chore.isDone ? "Označiť nehotové" : "Označiť hotové";
     }
 
-    const history = chore.dueDateHistory || [];
+    const history = (chore.dueDateHistory || []).filter(
+      (entry) => String(entry?.assignee || "") === String(chore.assignee || ""),
+    );
     if (history.length) {
       const historyDetails = document.createElement("details");
       historyDetails.className = "due-history";
@@ -434,12 +471,10 @@ function createChoresModule(context) {
     if (!el.totalCount || !el.openCount || !el.doneCount) return;
 
     const total = state.chores.length;
-    const visible = state.chores.filter((chore) => !chore.isDeleted);
-    const totalVisible = visible.length;
-    const done = visible.filter((chore) => chore.isDone).length;
-    const open = totalVisible - done;
+    const done = state.chores.filter((chore) => chore.isDone).length;
+    const open = total - done;
 
-    el.totalCount.textContent = String(totalVisible);
+    el.totalCount.textContent = String(total);
     el.openCount.textContent = String(open);
     el.doneCount.textContent = String(done);
   }
@@ -479,16 +514,14 @@ function createChoresModule(context) {
   function normalizeChore(chore) {
     const normalizedIsDone =
       typeof chore.isDone === "boolean" ? chore.isDone : String(chore.status || "").toLowerCase() === "done";
-    const normalizedIsDeleted =
-      typeof chore.isDeleted === "boolean" ? chore.isDeleted : String(chore.status || "").toLowerCase() === "deleted";
 
     return {
       ...chore,
       assignedDate: chore.assignedDate || utils.todayIso(),
       dueDateHistory: Array.isArray(chore.dueDateHistory) ? chore.dueDateHistory : [],
+      autoReassign: Boolean(chore.autoReassign),
       isDone: normalizedIsDone,
-      isDeleted: normalizedIsDeleted,
-      status: normalizedIsDeleted ? "deleted" : normalizedIsDone ? "done" : "open",
+      status: normalizedIsDone ? "done" : "open",
     };
   }
 

@@ -150,7 +150,7 @@ int db_ensure_storage(const AppConfig *config) {
   if (!file_exists(config->chores_csv_path)) {
     FILE *f = fopen(config->chores_csv_path, "w");
     if (!f) return -1;
-    fputs("id,title,assignee,assignedDate,dueDate,isDone,isDeleted,dueDateHistory\n", f);
+    fputs("id,title,assignee,assignedDate,dueDate,autoReassign,isDone,dueDateHistory,rollLossBonuses\n", f);
     fclose(f);
   }
 
@@ -186,8 +186,8 @@ int db_load_chores(const char *path, ChoreList *list) {
       continue;
     }
 
-    char fields[8][CSV_FIELD_MAX];
-    int count = csv_split_line(line, fields, 8);
+    char fields[10][CSV_FIELD_MAX];
+    int count = csv_split_line(line, fields, 10);
     if (count < 8) continue;
 
     Chore *bigger = (Chore *)realloc(list->items, (list->count + 1) * sizeof(Chore));
@@ -205,9 +205,34 @@ int db_load_chores(const char *path, ChoreList *list) {
     copy_truncated(chore->assignee, sizeof(chore->assignee), fields[2]);
     copy_truncated(chore->assigned_date, sizeof(chore->assigned_date), fields[3]);
     copy_truncated(chore->due_date, sizeof(chore->due_date), fields[4]);
-    chore->is_done = (strcmp(fields[5], "1") == 0 || strcmp(fields[5], "true") == 0);
-    chore->is_deleted = (strcmp(fields[6], "1") == 0 || strcmp(fields[6], "true") == 0);
-    copy_truncated(chore->due_date_history, sizeof(chore->due_date_history), fields[7]);
+    if (count >= 10) {
+      // Legacy: includes isDeleted column.
+      chore->auto_reassign = (strcmp(fields[5], "1") == 0 || strcmp(fields[5], "true") == 0);
+      chore->is_done = (strcmp(fields[6], "1") == 0 || strcmp(fields[6], "true") == 0);
+      copy_truncated(chore->due_date_history, sizeof(chore->due_date_history), fields[8]);
+      copy_truncated(chore->roll_loss_bonuses, sizeof(chore->roll_loss_bonuses), fields[9]);
+    } else if (count >= 9) {
+      chore->auto_reassign = (strcmp(fields[5], "1") == 0 || strcmp(fields[5], "true") == 0);
+      chore->is_done = (strcmp(fields[6], "1") == 0 || strcmp(fields[6], "true") == 0);
+
+      // Could be either:
+      // - New: ... isDone,dueDateHistory,rollLossBonuses
+      // - Legacy: ... isDone,isDeleted,dueDateHistory
+      if (strcmp(fields[7], "1") == 0 || strcmp(fields[7], "true") == 0 ||
+          strcmp(fields[7], "0") == 0 || strcmp(fields[7], "false") == 0) {
+        copy_truncated(chore->due_date_history, sizeof(chore->due_date_history), fields[8]);
+        chore->roll_loss_bonuses[0] = '\0';
+      } else {
+        copy_truncated(chore->due_date_history, sizeof(chore->due_date_history), fields[7]);
+        copy_truncated(chore->roll_loss_bonuses, sizeof(chore->roll_loss_bonuses), fields[8]);
+      }
+    } else {
+      // Legacy: no autoReassign column.
+      chore->auto_reassign = false;
+      chore->is_done = (strcmp(fields[5], "1") == 0 || strcmp(fields[5], "true") == 0);
+      copy_truncated(chore->due_date_history, sizeof(chore->due_date_history), fields[7]);
+      chore->roll_loss_bonuses[0] = '\0';
+    }
 
     ++list->count;
   }
@@ -220,7 +245,7 @@ int db_save_chores(const char *path, const ChoreList *list) {
   FILE *f = fopen(path, "w");
   if (!f) return -1;
 
-  fputs("id,title,assignee,assignedDate,dueDate,isDone,isDeleted,dueDateHistory\n", f);
+  fputs("id,title,assignee,assignedDate,dueDate,autoReassign,isDone,dueDateHistory,rollLossBonuses\n", f);
 
   for (size_t i = 0; i < list->count; ++i) {
     const Chore *c = &list->items[i];
@@ -230,9 +255,10 @@ int db_save_chores(const char *path, const ChoreList *list) {
     csv_write_cell(f, c->assignee); fputc(',', f);
     csv_write_cell(f, c->assigned_date); fputc(',', f);
     csv_write_cell(f, c->due_date); fputc(',', f);
+    csv_write_cell(f, c->auto_reassign ? "true" : "false"); fputc(',', f);
     csv_write_cell(f, c->is_done ? "true" : "false"); fputc(',', f);
-    csv_write_cell(f, c->is_deleted ? "true" : "false"); fputc(',', f);
-    csv_write_cell(f, c->due_date_history[0] ? c->due_date_history : "[]");
+    csv_write_cell(f, c->due_date_history[0] ? c->due_date_history : "[]"); fputc(',', f);
+    csv_write_cell(f, c->roll_loss_bonuses);
     fputc('\n', f);
   }
 

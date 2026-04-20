@@ -98,7 +98,6 @@ Each chore object uses this shape:
   "assignedDate": "2026-04-09",
   "dueDate": "2026-04-10",
   "isDone": false,
-  "isDeleted": false,
   "dueDateHistory": [
     {
       "previousDueDate": "2026-04-09",
@@ -114,7 +113,7 @@ Each chore object uses this shape:
 
 - Chores and chat are backend-managed.
 - Backend create payload is intentionally minimal: `title`, `assignee`, `dueDate`.
-- Chore state checks should use booleans: `isDone` and `isDeleted`.
+- Chore state checks should use boolean: `isDone`.
 - The included backend stores chores and messages in CSV files.
 - No frontend build step is required.
 

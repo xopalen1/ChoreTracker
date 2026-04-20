@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "db.h"
 #include "models.h"
@@ -7,6 +8,8 @@
 #include "server.h"
 
 int main(int argc, char **argv) {
+  srand((unsigned int)time(NULL));
+
   AppConfig config = {
     .port = 8080,
     .chores_csv_path = "backend/data/chores.csv",

@@ -46,6 +46,11 @@ void router_handle_request(const AppConfig *config, const HttpRequest *request, 
     return;
   }
 
+  if (chore_id && strcmp(request->method, "DELETE") == 0) {
+    handle_delete_chore(config, chore_id, response);
+    return;
+  }
+
   if (strcmp(request->method, "GET") == 0 && strcmp(request->path, "/api/messages") == 0) {
     handle_get_messages(config, response);
     return;

@@ -11,8 +11,8 @@ It serves the frontend API contract from `docs/BACKEND_INTEGRATION.md`.
 
 - REST endpoints for chores and messages
 - CSV persistence for chores and messages
-- Chore state with `isDone` and `isDeleted`
-- New chores are assigned on **Sunday** by backend rule
+- Chore state with `isDone`
+- New chores are assigned for **today** by backend rule
 - Readable module split: server, router, handlers, db, json, date
 
 ## Folder Structure
@@ -27,7 +27,7 @@ It serves the frontend API contract from `docs/BACKEND_INTEGRATION.md`.
 - `backend/src/json_utils.c`: lightweight JSON parsing helpers
 - `backend/src/string_builder.c`: shared response string builder
 - `backend/src/text_utils.c`: shared text utilities (trim/cleanup)
-- `backend/src/date_utils.c`: date functions (including Sunday assignment)
+- `backend/src/date_utils.c`: date functions (including relative-date assignment)
 - `backend/src/http.c`: HTTP parsing and response writing
 - `backend/src/net.c`: socket init/cleanup abstraction
 
@@ -72,9 +72,10 @@ Then open frontend and ensure backend mode is enabled in `js/main.js`.
 - `GET /api/chores/:id`
 - `POST /api/chores`
 - `PATCH /api/chores/:id`
+- `DELETE /api/chores/:id`
 - `GET /api/messages`
 - `POST /api/messages`
 
-## Sunday Assignment Rule
+## Assignment Date Rule
 
-On `POST /api/chores`, the backend sets `assignedDate` to Sunday via `date_next_sunday_iso(...)` in `backend/src/date_utils.c`.
+On `POST /api/chores`, the backend sets `assignedDate` to today via `date_today_plus_days_iso(0, ...)` in `backend/src/date_utils.c`.

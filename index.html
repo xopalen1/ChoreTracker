@@ -115,6 +115,14 @@
           required
         />
 
+        <label for="autoReassign" class="auto-reassign-toggle">
+          <input id="autoReassign" name="autoReassign" type="checkbox" />
+          <span class="toggle-track" aria-hidden="true">
+            <span class="toggle-thumb"></span>
+          </span>
+          <span class="toggle-text">Náhodne preradiť po dokončení (deadline bude o týždeň od dňa priradenia)</span>
+        </label>
+
         <div class="dialog-actions">
           <button type="button" id="cancelBtn" class="btn btn-ghost">Zrušiť</button>
           <button type="submit" class="btn btn-primary">Uložiť úlohu</button>
@@ -155,6 +163,17 @@
         <div class="dialog-actions">
           <button type="button" id="cancelEditDueDateBtn" class="btn btn-ghost">Zrušiť</button>
           <button type="submit" class="btn btn-primary">Uložiť deadline</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="deleteConfirmDialog" class="dialog card">
+      <form id="deleteConfirmForm" class="modal-form" method="dialog">
+        <h2>Potvrdiť vymazanie</h2>
+        <p id="deleteConfirmText" class="subtle">Naozaj chceš vymazať túto úlohu?</p>
+        <div class="dialog-actions">
+          <button type="button" id="cancelDeleteBtn" class="btn btn-ghost">Zrušiť</button>
+          <button type="submit" id="confirmDeleteBtn" class="btn btn-danger">Vymazať</button>
         </div>
       </form>
     </dialog>

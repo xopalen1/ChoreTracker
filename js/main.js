@@ -35,6 +35,7 @@ const el = {
   cancelBtn: document.getElementById("cancelBtn"),
   assigneeSelect: document.getElementById("assignee"),
   dueDateInput: document.getElementById("dueDate"),
+  autoReassignInput: document.getElementById("autoReassign"),
   roommateDialog: document.getElementById("roommateDialog"),
   roommateForm: document.getElementById("roommateForm"),
   roommateNameInput: document.getElementById("roommateName"),
@@ -43,7 +44,12 @@ const el = {
   editDueDateForm: document.getElementById("editDueDateForm"),
   editDueDateInput: document.getElementById("editDueDateInput"),
   cancelEditDueDateBtn: document.getElementById("cancelEditDueDateBtn"),
+  deleteConfirmDialog: document.getElementById("deleteConfirmDialog"),
+  deleteConfirmForm: document.getElementById("deleteConfirmForm"),
+  deleteConfirmText: document.getElementById("deleteConfirmText"),
+  cancelDeleteBtn: document.getElementById("cancelDeleteBtn"),
   chatList: document.getElementById("chatList"),
+  chatHeader: document.querySelector(".chat-header"),
   chatForm: document.getElementById("chatForm"),
   chatInput: document.getElementById("chatInput"),
   chatPanel: document.getElementById("chatPanel"),
@@ -142,6 +148,8 @@ const context = { config, state, el, api, utils };
 
 const choresModule = window.createChoresModule(context);
 const messagesModule = window.createMessagesModule(context);
+
+context.refreshChatMessages = () => messagesModule.loadChatMessages();
 
 bootstrap();
 

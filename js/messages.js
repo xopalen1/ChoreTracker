@@ -90,6 +90,8 @@ function createMessagesModule(context) {
     if (isMobileViewport()) {
       localStorage.setItem(chatOpenStorageKey, effectiveOpen ? "1" : "0");
     }
+
+    syncMobileFullscreenClass();
   }
 
   function syncResponsiveUi() {
@@ -116,10 +118,21 @@ function createMessagesModule(context) {
 
   function applyChatHeight(heightPx) {
     const min = 220;
-    const max = Math.max(320, window.innerHeight - 20);
+    const max = Math.max(320, window.innerHeight);
     const clamped = Math.max(min, Math.min(max, Math.round(heightPx)));
     state.chatMobileHeight = clamped;
     document.documentElement.style.setProperty("--chat-mobile-height", `${clamped}px`);
+    syncMobileFullscreenClass();
+  }
+
+  function syncMobileFullscreenClass() {
+    if (!el.chatPanel) return;
+
+    const mobile = isMobileViewport();
+    const fullHeightThreshold = Math.max(320, window.innerHeight) - 2;
+    const isFullscreen = mobile && state.chatMobileHeight >= fullHeightThreshold;
+
+    el.chatPanel.classList.toggle("mobile-fullscreen", isFullscreen);
   }
 
   function isMobileViewport() {
@@ -162,8 +175,12 @@ function createMessagesModule(context) {
       window.removeEventListener("pointercancel", onUp);
     };
 
-    el.chatResizer.addEventListener("pointerdown", (event) => {
+    const startResize = (event) => {
       if (!el.chatPanel?.classList.contains("open")) return;
+      if (event.target instanceof Element && event.target.closest("button, input, textarea, select, a, [role='button']")) {
+        return;
+      }
+
       isDragging = true;
       mode = isMobileViewport() ? "mobile" : "desktop";
       startX = event.clientX;
@@ -175,7 +192,10 @@ function createMessagesModule(context) {
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
-    });
+    };
+
+    el.chatResizer.addEventListener("pointerdown", startResize);
+    el.chatHeader?.addEventListener("pointerdown", startResize);
 
     window.addEventListener("resize", () => {
       syncResponsiveUi();
@@ -187,6 +207,8 @@ function createMessagesModule(context) {
       } else {
         applyChatWidth(state.chatWidth);
       }
+
+      syncMobileFullscreenClass();
     });
   }
 

@@ -200,7 +200,7 @@ int http_send_response(socket_t client, const HttpResponse *response) {
     "Connection: close\r\n"
     "Access-Control-Allow-Origin: *\r\n"
     "Access-Control-Allow-Headers: Content-Type\r\n"
-    "Access-Control-Allow-Methods: GET,POST,PATCH,OPTIONS\r\n"
+    "Access-Control-Allow-Methods: GET,POST,PATCH,DELETE,OPTIONS\r\n"
     "\r\n",
     response->status,
     status_text(response->status),

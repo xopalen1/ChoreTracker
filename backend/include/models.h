@@ -10,6 +10,7 @@
 #define DATE_MAX 16
 #define DATETIME_MAX 32
 #define HISTORY_MAX 4096
+#define ROLL_BONUS_MAX 2048
 
 #define MESSAGE_ID_MAX 32
 #define MESSAGE_TEXT_MAX 512
@@ -23,9 +24,10 @@ typedef struct {
   char assignee[CHORE_ASSIGNEE_MAX];
   char assigned_date[DATE_MAX];
   char due_date[DATE_MAX];
+  bool auto_reassign;
   bool is_done;
-  bool is_deleted;
   char due_date_history[HISTORY_MAX];
+  char roll_loss_bonuses[ROLL_BONUS_MAX];
 } Chore;
 
 typedef struct {
