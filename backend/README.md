@@ -45,7 +45,8 @@ From project root:
 
 This produces:
 
-- `backend/bin/roommate_backend.exe`
+- Windows: `backend/bin/roommate_backend.exe`
+- Linux/macOS: `backend/bin/roommate_backend`
 
 ## Run
 
