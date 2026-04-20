@@ -1,8 +1,9 @@
-# Roommate Chore Tracker (Frontend)
+# Roommate Chore Tracker
 
-A lightweight web app UI for tracking roommate chores.
+A full-stack roommate chore tracker with a browser frontend and a C23 backend API.
 
-This project intentionally ships frontend-only. You can connect your own backend API when ready.
+The frontend and backend in this repository are designed to work together out of the box.
+This is a fun, non-serious project.
 
 ## Features
 
@@ -13,24 +14,23 @@ This project intentionally ships frontend-only. You can connect your own backend
 - Mark chores as open or done.
 - Delete chores.
 - Filter by status and search by text.
-- Summary cards for total/open/done chores.
 - Right-side house chat with backend-ready message APIs.
 - Responsive layout for desktop and mobile.
+- C23 backend with CSV persistence for chores and chat messages.
+- UI text is currently in Slovak.
 
 ## Tech Stack
 
-- HTML
-- CSS
-- Vanilla JavaScript
+- Frontend: HTML, CSS, Vanilla JavaScript
+- Backend: C23 (modular HTTP server)
+- Storage: CSV files in `backend/data/`
 
 ## Run Locally
 
-Use any static server.
+Recommended: start frontend and backend together from the project root.
 
-### Option 1: Python
-
-```bash
-python -m http.server 5500 --bind 0.0.0.0
+```powershell
+.\start-app.ps1
 ```
 
 Then open:
@@ -38,21 +38,33 @@ Then open:
 - On your computer: `http://localhost:5500`
 - On phone/tablet (same Wi-Fi): `http://<YOUR_PC_IP>:5500`
 
-### Option 2: Node serve package
+Manual setup options:
+
+### Option 1: Build and run backend, then serve frontend
+
+```powershell
+.\backend\build.ps1
+.\backend\bin\roommate_backend.exe 8080
+python -m http.server 5500 --bind 0.0.0.0
+```
+
+### Option 2: Node serve package for frontend
 
 ```bash
 npx serve .
 ```
 
-## Backend Integration
+Use this only after the backend is already running on port `8080`.
 
-The app has built-in API hooks in `js/main.js` (with logic split into `js/chores.js` and `js/messages.js`).
+## API Configuration
+
+The app is preconfigured for the included backend via `js/main.js` (logic split into `js/chores.js` and `js/messages.js`).
 
 1. Open `js/main.js`.
 2. `config.apiBaseUrl` auto-uses the current host with port `8080`.
   Example: if frontend is `http://192.168.1.44:5500`, API calls go to `http://192.168.1.44:8080`.
 3. Keep backend flags enabled (`useBackendChores` and `useBackendMessages`).
-4. Implement backend routes matching the contract in `docs/BACKEND_INTEGRATION.md`.
+4. API routes follow the contract in `docs/BACKEND_INTEGRATION.md`.
 
 ## Data Model
 
@@ -80,11 +92,11 @@ Each chore object uses this shape:
 
 ## Notes
 
-- Chores and chat are fully backend-managed.
+- Chores and chat are backend-managed.
 - Backend create payload is intentionally minimal: `title`, `assignee`, `dueDate`.
 - Chore state checks should use booleans: `isDone` and `isDeleted`.
-- Your backend can store chores in a CSV database; frontend only depends on the API contract.
-- No build step is required.
+- The included backend stores chores and messages in CSV files.
+- No frontend build step is required.
 
 ## Backend Source
 
