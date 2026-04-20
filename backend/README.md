@@ -20,9 +20,13 @@ It serves the frontend API contract from `docs/BACKEND_INTEGRATION.md`.
 - `backend/src/main.c`: backend entry point
 - `backend/src/server.c`: TCP server accept loop and connection handling
 - `backend/src/router.c`: route dispatch
-- `backend/src/handlers.c`: endpoint handlers
+- `backend/src/handlers_chores.c`: chore endpoint handlers
+- `backend/src/handlers_messages.c`: message endpoint handlers
+- `backend/src/handlers_roommates.c`: roommate endpoint handlers
 - `backend/src/db.c`: CSV read/write and ID generation
 - `backend/src/json_utils.c`: lightweight JSON parsing helpers
+- `backend/src/string_builder.c`: shared response string builder
+- `backend/src/text_utils.c`: shared text utilities (trim/cleanup)
 - `backend/src/date_utils.c`: date functions (including Sunday assignment)
 - `backend/src/http.c`: HTTP parsing and response writing
 - `backend/src/net.c`: socket init/cleanup abstraction

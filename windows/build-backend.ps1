@@ -19,8 +19,12 @@ $files = @(
   (Join-Path $src "router.c"),
   (Join-Path $src "db.c"),
   (Join-Path $src "json_utils.c"),
+  (Join-Path $src "text_utils.c"),
+  (Join-Path $src "string_builder.c"),
   (Join-Path $src "date_utils.c"),
-  (Join-Path $src "handlers.c")
+  (Join-Path $src "handlers_chores.c"),
+  (Join-Path $src "handlers_messages.c"),
+  (Join-Path $src "handlers_roommates.c")
 )
 
 $cl = Get-Command cl -ErrorAction SilentlyContinue

@@ -1,6 +1,5 @@
 #include "handlers.h"
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,77 +7,8 @@
 #include "date_utils.h"
 #include "db.h"
 #include "json_utils.h"
-
-typedef struct {
-  char *data;
-  size_t len;
-  size_t cap;
-} StringBuilder;
-
-static int sb_init(StringBuilder *sb, size_t initial_cap) {
-  sb->data = (char *)malloc(initial_cap);
-  if (!sb->data) return -1;
-  sb->data[0] = '\0';
-  sb->len = 0;
-  sb->cap = initial_cap;
-  return 0;
-}
-
-static int sb_reserve(StringBuilder *sb, size_t needed) {
-  if (sb->len + needed + 1 <= sb->cap) return 0;
-
-  size_t next_cap = sb->cap;
-  while (sb->len + needed + 1 > next_cap) {
-    next_cap *= 2;
-  }
-
-  char *bigger = (char *)realloc(sb->data, next_cap);
-  if (!bigger) return -1;
-  sb->data = bigger;
-  sb->cap = next_cap;
-  return 0;
-}
-
-static int sb_append(StringBuilder *sb, const char *text) {
-  size_t n = strlen(text);
-  if (sb_reserve(sb, n) != 0) return -1;
-  memcpy(sb->data + sb->len, text, n);
-  sb->len += n;
-  sb->data[sb->len] = '\0';
-  return 0;
-}
-
-static int sb_appendf(StringBuilder *sb, const char *fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  va_list args_copy;
-  va_copy(args_copy, args);
-
-  int needed = vsnprintf(NULL, 0, fmt, args_copy);
-  va_end(args_copy);
-
-  if (needed < 0) {
-    va_end(args);
-    return -1;
-  }
-
-  if (sb_reserve(sb, (size_t)needed) != 0) {
-    va_end(args);
-    return -1;
-  }
-
-  vsnprintf(sb->data + sb->len, sb->cap - sb->len, fmt, args);
-  sb->len += (size_t)needed;
-  va_end(args);
-  return 0;
-}
-
-static void sb_free(StringBuilder *sb) {
-  free(sb->data);
-  sb->data = NULL;
-  sb->len = 0;
-  sb->cap = 0;
-}
+#include "string_builder.h"
+#include "text_utils.h"
 
 static const char *chore_status(const Chore *chore) {
   if (chore->is_deleted) return "deleted";
@@ -103,8 +33,8 @@ static int append_chore_json(StringBuilder *sb, const Chore *chore) {
 
   return sb_appendf(
     sb,
-    "{\"id\":\"%s\",\"title\":\"%s\",\"assignee\":\"%s\","
-    "\"assignedDate\":\"%s\",\"dueDate\":\"%s\","
+    "{\"id\":\"%s\",\"title\":\"%s\",\"assignee\":\"%s\"," 
+    "\"assignedDate\":\"%s\",\"dueDate\":\"%s\"," 
     "\"isDone\":%s,\"isDeleted\":%s,\"dueDateHistory\":%s,\"status\":\"%s\"}",
     id,
     title,
@@ -115,24 +45,6 @@ static int append_chore_json(StringBuilder *sb, const Chore *chore) {
     chore->is_deleted ? "true" : "false",
     history,
     chore_status(chore)
-  );
-}
-
-static int append_message_json(StringBuilder *sb, const Message *message) {
-  char id[MESSAGE_ID_MAX * 2];
-  char text[MESSAGE_TEXT_MAX * 2];
-  char sent_at[DATETIME_MAX * 2];
-
-  json_escape(message->id, id, sizeof(id));
-  json_escape(message->text, text, sizeof(text));
-  json_escape(message->sent_at, sent_at, sizeof(sent_at));
-
-  return sb_appendf(
-    sb,
-    "{\"id\":\"%s\",\"text\":\"%s\",\"sentAt\":\"%s\"}",
-    id,
-    text,
-    sent_at
   );
 }
 
@@ -209,6 +121,27 @@ void handle_create_chore(const AppConfig *config, const HttpRequest *request, Ht
     http_response_set_error(response, 400, "Missing required fields: title, assignee, dueDate");
     return;
   }
+
+  trim_whitespace_in_place(title);
+  trim_whitespace_in_place(assignee);
+
+  if (title[0] == '\0' || assignee[0] == '\0') {
+    http_response_set_error(response, 400, "Title and assignee must not be empty");
+    return;
+  }
+
+  RoommateList roommates;
+  if (db_load_roommates(config->roommates_csv_path, &roommates) != 0) {
+    http_response_set_error(response, 500, "Could not read roommates CSV");
+    return;
+  }
+
+  if (!db_roommate_exists(&roommates, assignee)) {
+    db_free_roommates(&roommates);
+    http_response_set_error(response, 400, "Assignee must be an existing roommate");
+    return;
+  }
+  db_free_roommates(&roommates);
 
   ChoreList list;
   if (db_load_chores(config->chores_csv_path, &list) != 0) {
@@ -331,82 +264,4 @@ void handle_patch_chore(const AppConfig *config, const char *id, const HttpReque
 
   sb_free(&sb);
   db_free_chores(&list);
-}
-
-void handle_get_messages(const AppConfig *config, HttpResponse *response) {
-  MessageList list;
-  if (db_load_messages(config->messages_csv_path, &list) != 0) {
-    http_response_set_error(response, 500, "Could not read messages CSV");
-    return;
-  }
-
-  StringBuilder sb;
-  if (sb_init(&sb, 512) != 0) {
-    db_free_messages(&list);
-    http_response_set_error(response, 500, "Out of memory");
-    return;
-  }
-
-  sb_append(&sb, "[");
-  for (size_t i = 0; i < list.count; ++i) {
-    if (i > 0) sb_append(&sb, ",");
-    append_message_json(&sb, &list.items[i]);
-  }
-  sb_append(&sb, "]");
-
-  http_response_set_json(response, 200, sb.data);
-
-  sb_free(&sb);
-  db_free_messages(&list);
-}
-
-void handle_create_message(const AppConfig *config, const HttpRequest *request, HttpResponse *response) {
-  char text[MESSAGE_TEXT_MAX];
-
-  if (!json_get_string(request->body, "text", text, sizeof(text))) {
-    http_response_set_error(response, 400, "Missing required field: text");
-    return;
-  }
-
-  MessageList list;
-  if (db_load_messages(config->messages_csv_path, &list) != 0) {
-    http_response_set_error(response, 500, "Could not read messages CSV");
-    return;
-  }
-
-  Message *bigger = (Message *)realloc(list.items, (list.count + 1) * sizeof(Message));
-  if (!bigger) {
-    db_free_messages(&list);
-    http_response_set_error(response, 500, "Out of memory");
-    return;
-  }
-  list.items = bigger;
-
-  Message *message = &list.items[list.count];
-  memset(message, 0, sizeof(*message));
-
-  db_next_message_id(&list, message->id, sizeof(message->id));
-  snprintf(message->text, sizeof(message->text), "%s", text);
-  date_now_iso_datetime(message->sent_at, sizeof(message->sent_at));
-
-  list.count += 1;
-
-  if (db_save_messages(config->messages_csv_path, &list) != 0) {
-    db_free_messages(&list);
-    http_response_set_error(response, 500, "Could not write messages CSV");
-    return;
-  }
-
-  StringBuilder sb;
-  if (sb_init(&sb, 256) != 0) {
-    db_free_messages(&list);
-    http_response_set_error(response, 500, "Out of memory");
-    return;
-  }
-
-  append_message_json(&sb, message);
-  http_response_set_json(response, 201, sb.data);
-
-  sb_free(&sb);
-  db_free_messages(&list);
 }

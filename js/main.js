@@ -11,6 +11,7 @@ const config = {
 
 const state = {
   chores: [],
+  roommates: [],
   chatMessages: [],
   chatWidth: 360,
   chatMobileHeight: 420,
@@ -28,10 +29,16 @@ const el = {
   filterStatus: document.getElementById("filterStatus"),
   searchInput: document.getElementById("searchInput"),
   newChoreBtn: document.getElementById("newChoreBtn"),
+  newRoommateBtn: document.getElementById("newRoommateBtn"),
   choreDialog: document.getElementById("choreDialog"),
   choreForm: document.getElementById("choreForm"),
   cancelBtn: document.getElementById("cancelBtn"),
+  assigneeSelect: document.getElementById("assignee"),
   dueDateInput: document.getElementById("dueDate"),
+  roommateDialog: document.getElementById("roommateDialog"),
+  roommateForm: document.getElementById("roommateForm"),
+  roommateNameInput: document.getElementById("roommateName"),
+  cancelRoommateBtn: document.getElementById("cancelRoommateBtn"),
   editDueDateDialog: document.getElementById("editDueDateDialog"),
   editDueDateForm: document.getElementById("editDueDateForm"),
   editDueDateInput: document.getElementById("editDueDateInput"),
@@ -103,6 +110,22 @@ const api = {
     if (!res.ok) throw new Error("Nepodarilo sa odoslat spravu");
     return res.json();
   },
+
+  async listRoommates() {
+    const res = await fetch(apiUrl("/api/roommates"));
+    if (!res.ok) throw new Error("Nepodarilo sa nacitat spolubyvajucich");
+    return res.json();
+  },
+
+  async createRoommate(name) {
+    const res = await fetch(apiUrl("/api/roommates"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error("Nepodarilo sa pridat spolubyvajuceho");
+    return res.json();
+  },
 };
 
 const utils = {
@@ -122,10 +145,11 @@ const messagesModule = window.createMessagesModule(context);
 
 bootstrap();
 
-function bootstrap() {
+async function bootstrap() {
   messagesModule.loadChatWidth();
   choresModule.bindEvents();
   messagesModule.bindEvents();
+  await choresModule.loadRoommates();
   choresModule.loadChores();
   messagesModule.loadChatMessages();
 }

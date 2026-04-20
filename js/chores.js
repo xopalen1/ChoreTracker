@@ -13,13 +13,42 @@ function createChoresModule(context) {
     });
 
     el.newChoreBtn?.addEventListener("click", () => {
+      renderRoommateOptions();
+      if (!state.roommates.length) {
+        el.roommateForm?.reset();
+        el.roommateDialog?.showModal();
+        return;
+      }
+
       el.choreForm?.reset();
+      if (el.assigneeSelect instanceof HTMLSelectElement) {
+        el.assigneeSelect.value = "";
+        el.assigneeSelect.selectedIndex = 0;
+        el.assigneeSelect.setCustomValidity("");
+      }
       if (el.dueDateInput instanceof HTMLInputElement) {
         el.dueDateInput.value = utils.isoToDmy(utils.todayPlusDays(1));
         el.dueDateInput.setCustomValidity("");
       }
+      if (el.assigneeSelect instanceof HTMLSelectElement) {
+        el.assigneeSelect.setCustomValidity("");
+      }
       el.choreDialog?.showModal();
     });
+
+    el.newRoommateBtn?.addEventListener("click", () => {
+      el.roommateForm?.reset();
+      if (el.roommateNameInput instanceof HTMLInputElement) {
+        el.roommateNameInput.setCustomValidity("");
+      }
+      el.roommateDialog?.showModal();
+    });
+
+    el.cancelRoommateBtn?.addEventListener("click", () => el.roommateDialog?.close());
+
+    if (el.roommateNameInput instanceof HTMLInputElement) {
+      el.roommateNameInput.addEventListener("input", () => el.roommateNameInput.setCustomValidity(""));
+    }
 
     if (el.dueDateInput instanceof HTMLInputElement) {
       el.dueDateInput.addEventListener("input", () => el.dueDateInput.setCustomValidity(""));
@@ -32,6 +61,7 @@ function createChoresModule(context) {
     });
 
     el.choreForm?.addEventListener("submit", handleCreateChore);
+    el.roommateForm?.addEventListener("submit", handleCreateRoommate);
 
     if (el.editDueDateInput instanceof HTMLInputElement) {
       el.editDueDateInput.addEventListener("input", () => {
@@ -79,6 +109,18 @@ function createChoresModule(context) {
     render();
   }
 
+  async function loadRoommates() {
+    try {
+      const fetched = await api.listRoommates();
+      state.roommates = Array.isArray(fetched) ? fetched.map(normalizeRoommate) : [];
+    } catch (error) {
+      console.error(error);
+      state.roommates = [];
+    }
+
+    renderRoommateOptions();
+  }
+
   async function handleCreateChore(event) {
     event.preventDefault();
     if (!el.choreForm) return;
@@ -102,6 +144,18 @@ function createChoresModule(context) {
     const title = String(formData.get("title")).trim();
     const assignee = String(formData.get("assignee")).trim();
 
+    const isKnownRoommate = state.roommates.some(
+      (roommate) => roommate.name.toLocaleLowerCase() === assignee.toLocaleLowerCase(),
+    );
+
+    if (!isKnownRoommate) {
+      if (el.assigneeSelect instanceof HTMLSelectElement) {
+        el.assigneeSelect.setCustomValidity("Vyber existujuceho spolubyvajuceho.");
+        el.assigneeSelect.reportValidity();
+      }
+      return;
+    }
+
     if (!title || !assignee || !dueDateIso) return;
 
     // Keep create payload minimal for easier backend handling.
@@ -121,6 +175,38 @@ function createChoresModule(context) {
 
     el.choreDialog?.close();
     render();
+  }
+
+  async function handleCreateRoommate(event) {
+    event.preventDefault();
+    if (!el.roommateForm) return;
+
+    const formData = new FormData(el.roommateForm);
+    const name = String(formData.get("name")).trim();
+
+    if (!name) {
+      if (el.roommateNameInput instanceof HTMLInputElement) {
+        el.roommateNameInput.setCustomValidity("Zadaj meno spolubyvajuceho.");
+        el.roommateNameInput.reportValidity();
+      }
+      return;
+    }
+
+    try {
+      const created = await api.createRoommate(name);
+      state.roommates.push(normalizeRoommate(created));
+    } catch (error) {
+      console.error(error);
+      if (el.roommateNameInput instanceof HTMLInputElement) {
+        el.roommateNameInput.setCustomValidity("Tento spolubyvajuci uz existuje alebo sa nepodarilo ulozit.");
+        el.roommateNameInput.reportValidity();
+      }
+      return;
+    }
+
+    state.roommates.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    renderRoommateOptions();
+    el.roommateDialog?.close();
   }
 
   async function handleEditDueDateSubmit(event) {
@@ -358,6 +444,38 @@ function createChoresModule(context) {
     el.doneCount.textContent = String(done);
   }
 
+  function renderRoommateOptions() {
+    if (!(el.assigneeSelect instanceof HTMLSelectElement)) return;
+
+    const previousValue = el.assigneeSelect.value;
+    el.assigneeSelect.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    placeholder.textContent = state.roommates.length
+      ? "Vyber spolubývajúceho"
+      : "Najprv pridaj spolubývajúcich";
+    el.assigneeSelect.append(placeholder);
+
+    state.roommates
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+      .forEach((roommate) => {
+        const option = document.createElement("option");
+        option.value = roommate.name;
+        option.textContent = roommate.name;
+        el.assigneeSelect.append(option);
+      });
+
+    if (state.roommates.some((roommate) => roommate.name === previousValue)) {
+      el.assigneeSelect.value = previousValue;
+    }
+
+    el.assigneeSelect.disabled = state.roommates.length === 0;
+  }
+
   function normalizeChore(chore) {
     const normalizedIsDone =
       typeof chore.isDone === "boolean" ? chore.isDone : String(chore.status || "").toLowerCase() === "done";
@@ -374,9 +492,17 @@ function createChoresModule(context) {
     };
   }
 
+  function normalizeRoommate(roommate) {
+    return {
+      id: String(roommate?.id || ""),
+      name: String(roommate?.name || "").trim(),
+    };
+  }
+
   return {
     bindEvents,
     loadChores,
+    loadRoommates,
   };
 }
 

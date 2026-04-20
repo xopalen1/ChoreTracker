@@ -11,6 +11,7 @@ int main(int argc, char **argv) {
     .port = 8080,
     .chores_csv_path = "backend/data/chores.csv",
     .messages_csv_path = "backend/data/messages.csv",
+    .roommates_csv_path = "backend/data/roommates.csv",
   };
 
   if (argc >= 2) {

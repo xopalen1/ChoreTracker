@@ -18,8 +18,12 @@ FILES=(
   "$SRC/router.c"
   "$SRC/db.c"
   "$SRC/json_utils.c"
+  "$SRC/text_utils.c"
+  "$SRC/string_builder.c"
   "$SRC/date_utils.c"
-  "$SRC/handlers.c"
+  "$SRC/handlers_chores.c"
+  "$SRC/handlers_messages.c"
+  "$SRC/handlers_roommates.c"
 )
 
 if command -v gcc >/dev/null 2>&1; then

@@ -161,6 +161,13 @@ int db_ensure_storage(const AppConfig *config) {
     fclose(f);
   }
 
+  if (!file_exists(config->roommates_csv_path)) {
+    FILE *f = fopen(config->roommates_csv_path, "w");
+    if (!f) return -1;
+    fputs("id,name\n", f);
+    fclose(f);
+  }
+
   return 0;
 }
 
@@ -301,6 +308,66 @@ void db_free_messages(MessageList *list) {
   list->count = 0;
 }
 
+int db_load_roommates(const char *path, RoommateList *list) {
+  list->items = NULL;
+  list->count = 0;
+
+  FILE *f = fopen(path, "r");
+  if (!f) return -1;
+
+  char line[4096];
+  int first = 1;
+  while (fgets(line, sizeof(line), f)) {
+    if (first) {
+      first = 0;
+      continue;
+    }
+
+    char fields[2][CSV_FIELD_MAX];
+    int count = csv_split_line(line, fields, 2);
+    if (count < 2) continue;
+
+    Roommate *bigger = (Roommate *)realloc(list->items, (list->count + 1) * sizeof(Roommate));
+    if (!bigger) {
+      fclose(f);
+      return -1;
+    }
+    list->items = bigger;
+
+    Roommate *roommate = &list->items[list->count];
+    memset(roommate, 0, sizeof(*roommate));
+    copy_truncated(roommate->id, sizeof(roommate->id), fields[0]);
+    copy_truncated(roommate->name, sizeof(roommate->name), fields[1]);
+    ++list->count;
+  }
+
+  fclose(f);
+  return 0;
+}
+
+int db_save_roommates(const char *path, const RoommateList *list) {
+  FILE *f = fopen(path, "w");
+  if (!f) return -1;
+
+  fputs("id,name\n", f);
+
+  for (size_t i = 0; i < list->count; ++i) {
+    const Roommate *roommate = &list->items[i];
+    csv_write_cell(f, roommate->id); fputc(',', f);
+    csv_write_cell(f, roommate->name);
+    fputc('\n', f);
+  }
+
+  fclose(f);
+  return 0;
+}
+
+void db_free_roommates(RoommateList *list) {
+  if (list->items) free(list->items);
+  list->items = NULL;
+  list->count = 0;
+}
+
 static int parse_id_number(const char *id, char prefix) {
   if (!id || id[0] != prefix || id[1] == '\0') return 0;
 
@@ -329,4 +396,25 @@ int db_next_message_id(const MessageList *list, char *out, size_t out_size) {
     if (value > max_id) max_id = value;
   }
   return snprintf(out, out_size, "m%06d", max_id + 1) > 0 ? 0 : -1;
+}
+
+int db_next_roommate_id(const RoommateList *list, char *out, size_t out_size) {
+  int max_id = 0;
+  for (size_t i = 0; i < list->count; ++i) {
+    int value = parse_id_number(list->items[i].id, 'r');
+    if (value > max_id) max_id = value;
+  }
+  return snprintf(out, out_size, "r%06d", max_id + 1) > 0 ? 0 : -1;
+}
+
+int db_roommate_exists(const RoommateList *list, const char *name) {
+  if (!list || !name || name[0] == '\0') return 0;
+
+  for (size_t i = 0; i < list->count; ++i) {
+    if (strcasecmp(list->items[i].name, name) == 0) {
+      return 1;
+    }
+  }
+
+  return 0;
 }

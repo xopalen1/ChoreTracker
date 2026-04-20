@@ -9,8 +9,20 @@ PID_FILE="$ROOT/.app-pids"
 BACKEND_BIN="$ROOT/backend/bin/roommate_backend"
 BACKEND_BUILD_SCRIPT="$SCRIPT_DIR/build-backend.sh"
 
-if [[ ! -x "$BACKEND_BIN" ]]; then
-  echo "Backend binary not found. Building backend..."
+backend_needs_build() {
+  if [[ ! -x "$BACKEND_BIN" ]]; then
+    return 0
+  fi
+
+  if find "$ROOT/backend/src" "$ROOT/backend/include" "$BACKEND_BUILD_SCRIPT" -type f -newer "$BACKEND_BIN" | grep -q .; then
+    return 0
+  fi
+
+  return 1
+}
+
+if backend_needs_build; then
+  echo "Backend binary missing or stale. Building backend..."
   bash "$BACKEND_BUILD_SCRIPT"
 fi
 

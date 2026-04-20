@@ -23,7 +23,10 @@
           <h1>Povinnosti</h1>
           <p class="subtle">(=^･ω･^=)</p>
         </div>
-        <button id="newChoreBtn" class="btn btn-primary">Pridať úlohu</button>
+        <div class="header-actions">
+          <button id="newRoommateBtn" class="btn btn-ghost">Pridať spolubývajúceho</button>
+          <button id="newChoreBtn" class="btn btn-primary">Pridať úlohu</button>
+        </div>
       </header>
 
       <section class="card controls">
@@ -96,7 +99,9 @@
         <input id="title" name="title" type="text" required maxlength="80" />
 
         <label for="assignee">Otrok</label>
-        <input id="assignee" name="assignee" type="text" required maxlength="40" />
+        <select id="assignee" name="assignee" required>
+          <option value="" selected disabled>Najprv pridaj spolubývajúcich</option>
+        </select>
 
         <label for="dueDate">Deadline (DD-MM-YYYY)</label>
         <input
@@ -113,6 +118,20 @@
         <div class="dialog-actions">
           <button type="button" id="cancelBtn" class="btn btn-ghost">Zrušiť</button>
           <button type="submit" class="btn btn-primary">Uložiť úlohu</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="roommateDialog" class="dialog card">
+      <form id="roommateForm" class="modal-form" method="dialog">
+        <h2>Pridať spolubývajúceho</h2>
+
+        <label for="roommateName">Meno</label>
+        <input id="roommateName" name="name" type="text" required maxlength="40" />
+
+        <div class="dialog-actions">
+          <button type="button" id="cancelRoommateBtn" class="btn btn-ghost">Zrušiť</button>
+          <button type="submit" class="btn btn-primary">Uložiť</button>
         </div>
       </form>
     </dialog>

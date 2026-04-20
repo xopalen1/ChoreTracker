@@ -12,4 +12,7 @@ void handle_patch_chore(const AppConfig *config, const char *id, const HttpReque
 void handle_get_messages(const AppConfig *config, HttpResponse *response);
 void handle_create_message(const AppConfig *config, const HttpRequest *request, HttpResponse *response);
 
+void handle_get_roommates(const AppConfig *config, HttpResponse *response);
+void handle_create_roommate(const AppConfig *config, const HttpRequest *request, HttpResponse *response);
+
 #endif

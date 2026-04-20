@@ -8,8 +8,34 @@ $pidFile = Join-Path $root ".app-pids.json"
 $backendExe = Join-Path $root "backend\bin\roommate_backend.exe"
 $backendBuildScript = Join-Path $scriptRoot "build-backend.ps1"
 
-if (!(Test-Path $backendExe)) {
-  Write-Host "Backend binary not found. Building backend..."
+function Test-BackendNeedsBuild {
+  param(
+    [string]$BackendBinary,
+    [string]$BuildScript,
+    [string]$ProjectRoot
+  )
+
+  if (!(Test-Path $BackendBinary)) {
+    return $true
+  }
+
+  $binaryTime = (Get-Item $BackendBinary).LastWriteTimeUtc
+  $sourceFiles = @()
+  $sourceFiles += Get-ChildItem -Path (Join-Path $ProjectRoot "backend\src") -Filter "*.c" -File -Recurse
+  $sourceFiles += Get-ChildItem -Path (Join-Path $ProjectRoot "backend\include") -Filter "*.h" -File -Recurse
+  $sourceFiles += Get-Item $BuildScript
+
+  foreach ($file in $sourceFiles) {
+    if ($file.LastWriteTimeUtc -gt $binaryTime) {
+      return $true
+    }
+  }
+
+  return $false
+}
+
+if (Test-BackendNeedsBuild -BackendBinary $backendExe -BuildScript $backendBuildScript -ProjectRoot $root) {
+  Write-Host "Backend binary missing or stale. Building backend..."
   & $backendBuildScript
 }
 

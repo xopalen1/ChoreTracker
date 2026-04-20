@@ -14,6 +14,9 @@
 #define MESSAGE_ID_MAX 32
 #define MESSAGE_TEXT_MAX 512
 
+#define ROOMMATE_ID_MAX 32
+#define ROOMMATE_NAME_MAX 64
+
 typedef struct {
   char id[CHORE_ID_MAX];
   char title[CHORE_TITLE_MAX];
@@ -42,9 +45,20 @@ typedef struct {
 } MessageList;
 
 typedef struct {
+  char id[ROOMMATE_ID_MAX];
+  char name[ROOMMATE_NAME_MAX];
+} Roommate;
+
+typedef struct {
+  Roommate *items;
+  size_t count;
+} RoommateList;
+
+typedef struct {
   int port;
   const char *chores_csv_path;
   const char *messages_csv_path;
+  const char *roommates_csv_path;
 } AppConfig;
 
 #endif

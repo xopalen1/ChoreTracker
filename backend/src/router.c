@@ -56,5 +56,15 @@ void router_handle_request(const AppConfig *config, const HttpRequest *request, 
     return;
   }
 
+  if (strcmp(request->method, "GET") == 0 && strcmp(request->path, "/api/roommates") == 0) {
+    handle_get_roommates(config, response);
+    return;
+  }
+
+  if (strcmp(request->method, "POST") == 0 && strcmp(request->path, "/api/roommates") == 0) {
+    handle_create_roommate(config, request, response);
+    return;
+  }
+
   http_response_set_error(response, 404, "Route not found");
 }
