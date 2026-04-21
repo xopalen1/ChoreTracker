@@ -22,6 +22,7 @@ $files = @(
   (Join-Path $src "text_utils.c"),
   (Join-Path $src "string_builder.c"),
   (Join-Path $src "date_utils.c"),
+  (Join-Path $src "handlers_common.c"),
   (Join-Path $src "handlers_chores.c"),
   (Join-Path $src "handlers_messages.c"),
   (Join-Path $src "handlers_roommates.c")

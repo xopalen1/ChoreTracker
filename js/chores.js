@@ -2,6 +2,21 @@ function createChoresModule(context) {
   const { state, el, api, utils } = context;
   let pendingDeleteId = null;
 
+  function clearFieldError(input) {
+    if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLSelectElement)) {
+      return;
+    }
+    input.setCustomValidity("");
+  }
+
+  function showFieldError(input, message) {
+    if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLSelectElement)) {
+      return;
+    }
+    input.setCustomValidity(message);
+    input.reportValidity();
+  }
+
   function bindEvents() {
     el.filterStatus?.addEventListener("change", () => {
       state.filterStatus = el.filterStatus.value;
@@ -25,38 +40,30 @@ function createChoresModule(context) {
       if (el.assigneeSelect instanceof HTMLSelectElement) {
         el.assigneeSelect.value = "";
         el.assigneeSelect.selectedIndex = 0;
-        el.assigneeSelect.setCustomValidity("");
+        clearFieldError(el.assigneeSelect);
       }
       if (el.autoReassignInput instanceof HTMLInputElement) {
         el.autoReassignInput.checked = false;
       }
       if (el.dueDateInput instanceof HTMLInputElement) {
         el.dueDateInput.value = utils.isoToDmy(utils.todayPlusDays(1));
-        el.dueDateInput.setCustomValidity("");
+        clearFieldError(el.dueDateInput);
       }
-      if (el.assigneeSelect instanceof HTMLSelectElement) {
-        el.assigneeSelect.setCustomValidity("");
-      }
+      clearFieldError(el.assigneeSelect);
       el.choreDialog?.showModal();
     });
 
     el.newRoommateBtn?.addEventListener("click", () => {
       el.roommateForm?.reset();
-      if (el.roommateNameInput instanceof HTMLInputElement) {
-        el.roommateNameInput.setCustomValidity("");
-      }
+      clearFieldError(el.roommateNameInput);
       el.roommateDialog?.showModal();
     });
 
     el.cancelRoommateBtn?.addEventListener("click", () => el.roommateDialog?.close());
 
-    if (el.roommateNameInput instanceof HTMLInputElement) {
-      el.roommateNameInput.addEventListener("input", () => el.roommateNameInput.setCustomValidity(""));
-    }
+    el.roommateNameInput?.addEventListener("input", () => clearFieldError(el.roommateNameInput));
 
-    if (el.dueDateInput instanceof HTMLInputElement) {
-      el.dueDateInput.addEventListener("input", () => el.dueDateInput.setCustomValidity(""));
-    }
+    el.dueDateInput?.addEventListener("input", () => clearFieldError(el.dueDateInput));
 
     el.cancelBtn?.addEventListener("click", () => el.choreDialog?.close());
     el.cancelEditDueDateBtn?.addEventListener("click", () => {
@@ -72,11 +79,7 @@ function createChoresModule(context) {
     el.roommateForm?.addEventListener("submit", handleCreateRoommate);
     el.deleteConfirmForm?.addEventListener("submit", handleDeleteConfirmSubmit);
 
-    if (el.editDueDateInput instanceof HTMLInputElement) {
-      el.editDueDateInput.addEventListener("input", () => {
-        el.editDueDateInput.setCustomValidity("");
-      });
-    }
+    el.editDueDateInput?.addEventListener("input", () => clearFieldError(el.editDueDateInput));
 
     el.editDueDateForm?.addEventListener("submit", handleEditDueDateSubmit);
 
@@ -139,16 +142,11 @@ function createChoresModule(context) {
     const dueDateIso = utils.dmyToIso(dueDateRaw);
 
     if (!dueDateIso) {
-      if (el.dueDateInput instanceof HTMLInputElement) {
-        el.dueDateInput.setCustomValidity("Použi DD-MM-YYYY, napr. 11-09-2001");
-        el.dueDateInput.reportValidity();
-      }
+      showFieldError(el.dueDateInput, "Použi DD-MM-YYYY, napr. 11-09-2001");
       return;
     }
 
-    if (el.dueDateInput instanceof HTMLInputElement) {
-      el.dueDateInput.setCustomValidity("");
-    }
+    clearFieldError(el.dueDateInput);
 
     const title = String(formData.get("title")).trim();
     const assignee = String(formData.get("assignee")).trim();
@@ -159,10 +157,7 @@ function createChoresModule(context) {
     );
 
     if (!isKnownRoommate) {
-      if (el.assigneeSelect instanceof HTMLSelectElement) {
-        el.assigneeSelect.setCustomValidity("Vyber existujuceho spolubyvajuceho.");
-        el.assigneeSelect.reportValidity();
-      }
+      showFieldError(el.assigneeSelect, "Vyber existujuceho spolubyvajuceho.");
       return;
     }
 
@@ -196,10 +191,7 @@ function createChoresModule(context) {
     const name = String(formData.get("name")).trim();
 
     if (!name) {
-      if (el.roommateNameInput instanceof HTMLInputElement) {
-        el.roommateNameInput.setCustomValidity("Zadaj meno spolubyvajuceho.");
-        el.roommateNameInput.reportValidity();
-      }
+      showFieldError(el.roommateNameInput, "Zadaj meno spolubyvajuceho.");
       return;
     }
 
@@ -208,10 +200,7 @@ function createChoresModule(context) {
       state.roommates.push(normalizeRoommate(created));
     } catch (error) {
       console.error(error);
-      if (el.roommateNameInput instanceof HTMLInputElement) {
-        el.roommateNameInput.setCustomValidity("Tento spolubyvajuci uz existuje alebo sa nepodarilo ulozit.");
-        el.roommateNameInput.reportValidity();
-      }
+      showFieldError(el.roommateNameInput, "Tento spolubyvajuci uz existuje alebo sa nepodarilo ulozit.");
       return;
     }
 
@@ -229,16 +218,11 @@ function createChoresModule(context) {
 
     const nextDueDate = utils.dmyToIso((el.editDueDateInput?.value || "").trim());
     if (!nextDueDate) {
-      if (el.editDueDateInput instanceof HTMLInputElement) {
-        el.editDueDateInput.setCustomValidity("Použi DD-MM-YYYY, napr. 11-09-2001");
-        el.editDueDateInput.reportValidity();
-      }
+      showFieldError(el.editDueDateInput, "Použi DD-MM-YYYY, napr. 11-09-2001");
       return;
     }
 
-    if (el.editDueDateInput instanceof HTMLInputElement) {
-      el.editDueDateInput.setCustomValidity("");
-    }
+    clearFieldError(el.editDueDateInput);
 
     if (nextDueDate === chore.dueDate) {
       state.editingDueDateId = null;
@@ -336,7 +320,7 @@ function createChoresModule(context) {
     state.editingDueDateId = id;
     if (el.editDueDateInput instanceof HTMLInputElement) {
       el.editDueDateInput.value = utils.isoToDmy(chore.dueDate);
-      el.editDueDateInput.setCustomValidity("");
+      clearFieldError(el.editDueDateInput);
     }
     el.editDueDateDialog?.showModal();
   }

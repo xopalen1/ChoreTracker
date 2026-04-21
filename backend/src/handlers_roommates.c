@@ -5,11 +5,13 @@
 #include <string.h>
 
 #include "db.h"
+#include "handlers_common.h"
 #include "json_utils.h"
 #include "string_builder.h"
 #include "text_utils.h"
 
-static int append_roommate_json(StringBuilder *sb, const Roommate *roommate) {
+static int append_roommate_json(StringBuilder *sb, const void *item) {
+  const Roommate *roommate = (const Roommate *)item;
   char id[ROOMMATE_ID_MAX * 2];
   char name[ROOMMATE_NAME_MAX * 2];
 
@@ -26,23 +28,7 @@ void handle_get_roommates(const AppConfig *config, HttpResponse *response) {
     return;
   }
 
-  StringBuilder sb;
-  if (sb_init(&sb, 256) != 0) {
-    db_free_roommates(&list);
-    http_response_set_error(response, 500, "Out of memory");
-    return;
-  }
-
-  sb_append(&sb, "[");
-  for (size_t i = 0; i < list.count; ++i) {
-    if (i > 0) sb_append(&sb, ",");
-    append_roommate_json(&sb, &list.items[i]);
-  }
-  sb_append(&sb, "]");
-
-  http_response_set_json(response, 200, sb.data);
-
-  sb_free(&sb);
+  handlers_write_json_array(response, list.items, list.count, sizeof(Roommate), append_roommate_json, 256, 200);
   db_free_roommates(&list);
 }
 
@@ -92,16 +78,6 @@ void handle_create_roommate(const AppConfig *config, const HttpRequest *request,
     return;
   }
 
-  StringBuilder sb;
-  if (sb_init(&sb, 128) != 0) {
-    db_free_roommates(&list);
-    http_response_set_error(response, 500, "Out of memory");
-    return;
-  }
-
-  append_roommate_json(&sb, roommate);
-  http_response_set_json(response, 201, sb.data);
-
-  sb_free(&sb);
+  handlers_write_json_item(response, roommate, append_roommate_json, 128, 201);
   db_free_roommates(&list);
 }

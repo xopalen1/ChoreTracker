@@ -6,10 +6,12 @@
 
 #include "date_utils.h"
 #include "db.h"
+#include "handlers_common.h"
 #include "json_utils.h"
 #include "string_builder.h"
 
-static int append_message_json(StringBuilder *sb, const Message *message) {
+static int append_message_json(StringBuilder *sb, const void *item) {
+  const Message *message = (const Message *)item;
   char id[MESSAGE_ID_MAX * 2];
   char text[MESSAGE_TEXT_MAX * 2];
   char sent_at[DATETIME_MAX * 2];
@@ -34,23 +36,7 @@ void handle_get_messages(const AppConfig *config, HttpResponse *response) {
     return;
   }
 
-  StringBuilder sb;
-  if (sb_init(&sb, 512) != 0) {
-    db_free_messages(&list);
-    http_response_set_error(response, 500, "Out of memory");
-    return;
-  }
-
-  sb_append(&sb, "[");
-  for (size_t i = 0; i < list.count; ++i) {
-    if (i > 0) sb_append(&sb, ",");
-    append_message_json(&sb, &list.items[i]);
-  }
-  sb_append(&sb, "]");
-
-  http_response_set_json(response, 200, sb.data);
-
-  sb_free(&sb);
+  handlers_write_json_array(response, list.items, list.count, sizeof(Message), append_message_json, 512, 200);
   db_free_messages(&list);
 }
 
@@ -91,16 +77,6 @@ void handle_create_message(const AppConfig *config, const HttpRequest *request, 
     return;
   }
 
-  StringBuilder sb;
-  if (sb_init(&sb, 256) != 0) {
-    db_free_messages(&list);
-    http_response_set_error(response, 500, "Out of memory");
-    return;
-  }
-
-  append_message_json(&sb, message);
-  http_response_set_json(response, 201, sb.data);
-
-  sb_free(&sb);
+  handlers_write_json_item(response, message, append_message_json, 256, 201);
   db_free_messages(&list);
 }

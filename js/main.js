@@ -60,77 +60,63 @@ const el = {
 
 const api = {
   async listChores() {
-    const res = await fetch(apiUrl("/api/chores"));
-    if (!res.ok) throw new Error("Nepodarilo sa nacitat ulohy");
-    return res.json();
+    return requestApiJson("/api/chores", { errorMessage: "Nepodarilo sa nacitat ulohy" });
   },
 
   async createChore(chore) {
-    const res = await fetch(apiUrl("/api/chores"), {
+    return requestApiJson("/api/chores", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(chore),
+      body: chore,
+      errorMessage: "Nepodarilo sa vytvorit ulohu",
     });
-    if (!res.ok) throw new Error("Nepodarilo sa vytvorit ulohu");
-    return res.json();
   },
 
   async updateChoreStatus(id, isDone) {
-    const res = await fetch(apiUrl(`/api/chores/${id}`), {
+    return requestApiJson(`/api/chores/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isDone }),
+      body: { isDone },
+      errorMessage: "Nepodarilo sa upravit ulohu",
     });
-    if (!res.ok) throw new Error("Nepodarilo sa upravit ulohu");
-    return res.json();
   },
 
   async updateChore(id, patch) {
-    const res = await fetch(apiUrl(`/api/chores/${id}`), {
+    return requestApiJson(`/api/chores/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
+      body: patch,
+      errorMessage: "Nepodarilo sa upravit ulohu",
     });
-    if (!res.ok) throw new Error("Nepodarilo sa upravit ulohu");
-    return res.json();
   },
 
   async deleteChore(id) {
-    const res = await fetch(apiUrl(`/api/chores/${id}`), { method: "DELETE" });
-    if (!res.ok) throw new Error("Nepodarilo sa vymazat ulohu");
-    return true;
+    await requestApi(`/api/chores/${id}`, {
+      method: "DELETE",
+      errorMessage: "Nepodarilo sa vymazat ulohu",
+      expectJson: false,
+    });
   },
 
   async listMessages() {
-    const res = await fetch(apiUrl("/api/messages"));
-    if (!res.ok) throw new Error("Nepodarilo sa nacitat spravy");
-    return res.json();
+    return requestApiJson("/api/messages", { errorMessage: "Nepodarilo sa nacitat spravy" });
   },
 
   async createMessage(text) {
-    const res = await fetch(apiUrl("/api/messages"), {
+    return requestApiJson("/api/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: { text },
+      errorMessage: "Nepodarilo sa odoslat spravu",
     });
-    if (!res.ok) throw new Error("Nepodarilo sa odoslat spravu");
-    return res.json();
   },
 
   async listRoommates() {
-    const res = await fetch(apiUrl("/api/roommates"));
-    if (!res.ok) throw new Error("Nepodarilo sa nacitat spolubyvajucich");
-    return res.json();
+    return requestApiJson("/api/roommates", { errorMessage: "Nepodarilo sa nacitat spolubyvajucich" });
   },
 
   async createRoommate(name) {
-    const res = await fetch(apiUrl("/api/roommates"), {
+    return requestApiJson("/api/roommates", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: { name },
+      errorMessage: "Nepodarilo sa pridat spolubyvajuceho",
     });
-    if (!res.ok) throw new Error("Nepodarilo sa pridat spolubyvajuceho");
-    return res.json();
   },
 };
 
@@ -164,6 +150,30 @@ async function bootstrap() {
 
 function apiUrl(path) {
   return `${config.apiBaseUrl}${path}`;
+}
+
+async function requestApi(path, options = {}) {
+  const {
+    method = "GET",
+    body,
+    errorMessage = "Poziadavka zlyhala",
+    expectJson = true,
+  } = options;
+
+  const requestOptions = { method };
+  if (body !== undefined) {
+    requestOptions.headers = { "Content-Type": "application/json" };
+    requestOptions.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(apiUrl(path), requestOptions);
+  if (!res.ok) throw new Error(errorMessage);
+  if (!expectJson) return null;
+  return res.json();
+}
+
+function requestApiJson(path, options = {}) {
+  return requestApi(path, { ...options, expectJson: true });
 }
 
 function todayIso() {

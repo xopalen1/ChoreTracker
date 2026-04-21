@@ -21,6 +21,7 @@ It serves the frontend API contract from `docs/BACKEND_INTEGRATION.md`.
 - `backend/src/server.c`: TCP server accept loop and connection handling
 - `backend/src/router.c`: route dispatch
 - `backend/src/handlers_chores.c`: chore endpoint handlers
+- `backend/src/handlers_common.c`: shared handler response helpers
 - `backend/src/handlers_messages.c`: message endpoint handlers
 - `backend/src/handlers_roommates.c`: roommate endpoint handlers
 - `backend/src/db.c`: CSV read/write and ID generation
@@ -75,6 +76,12 @@ Then open frontend and ensure backend mode is enabled in `js/main.js`.
 - `DELETE /api/chores/:id`
 - `GET /api/messages`
 - `POST /api/messages`
+
+## Decomposition Notes
+
+- Handler JSON response assembly is centralized in `backend/src/handlers_common.c` to avoid repeated StringBuilder boilerplate.
+- Endpoint-specific handlers now focus on validation, persistence operations, and domain rules.
+- `backend/src/handlers_chores.c` uses shared internal helpers for repeated ID lookup and reassignment logic blocks.
 
 ## Assignment Date Rule
 

@@ -116,6 +116,7 @@ Each chore object uses this shape:
 - Chore state checks should use boolean: `isDone`.
 - The included backend stores chores and messages in CSV files.
 - No frontend build step is required.
+- Frontend API calls are centralized via shared request helpers in `js/main.js` for readability and consistent error handling.
 
 ## Backend Source
 

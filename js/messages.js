@@ -181,13 +181,22 @@ function createMessagesModule(context) {
         return;
       }
 
+      const nextMode = isMobileViewport() ? "mobile" : "desktop";
+
+      if (nextMode === "mobile" && event.pointerType === "touch") {
+        event.preventDefault();
+      }
+
       isDragging = true;
-      mode = isMobileViewport() ? "mobile" : "desktop";
+      mode = nextMode;
       startX = event.clientX;
       startY = event.clientY;
       startWidth = state.chatWidth;
       startHeight = state.chatMobileHeight;
       event.preventDefault();
+      if (event.currentTarget instanceof Element && event.currentTarget.setPointerCapture) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
       el.chatPanel?.classList.add("resizing");
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);

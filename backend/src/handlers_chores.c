@@ -259,6 +259,19 @@ static int roll_auto_reassignment(Chore *chore, const RoommateList *roommates, c
   return message_result;
 }
 
+static int find_chore_index(const ChoreList *list, const char *id, size_t *out_index) {
+  if (!list || !id || !out_index) return -1;
+
+  for (size_t i = 0; i < list->count; ++i) {
+    if (strcmp(list->items[i].id, id) == 0) {
+      *out_index = i;
+      return 0;
+    }
+  }
+
+  return -1;
+}
+
 static int append_chore_json(StringBuilder *sb, const Chore *chore) {
   char id[CHORE_ID_MAX * 2];
   char title[CHORE_TITLE_MAX * 2];
@@ -325,19 +338,14 @@ void handle_get_chore_by_id(const AppConfig *config, const char *id, HttpRespons
     return;
   }
 
-  Chore *found = NULL;
-  for (size_t i = 0; i < list.count; ++i) {
-    if (strcmp(list.items[i].id, id) == 0) {
-      found = &list.items[i];
-      break;
-    }
-  }
-
-  if (!found) {
+  size_t found_index = 0;
+  if (find_chore_index(&list, id, &found_index) != 0) {
     db_free_chores(&list);
     http_response_set_error(response, 404, "Chore not found");
     return;
   }
+
+  Chore *found = &list.items[found_index];
 
   StringBuilder sb;
   if (sb_init(&sb, 512) != 0) {
@@ -446,19 +454,14 @@ void handle_patch_chore(const AppConfig *config, const char *id, const HttpReque
     return;
   }
 
-  Chore *found = NULL;
-  for (size_t i = 0; i < list.count; ++i) {
-    if (strcmp(list.items[i].id, id) == 0) {
-      found = &list.items[i];
-      break;
-    }
-  }
-
-  if (!found) {
+  size_t found_index = 0;
+  if (find_chore_index(&list, id, &found_index) != 0) {
     db_free_chores(&list);
     http_response_set_error(response, 404, "Chore not found");
     return;
   }
+
+  Chore *found = &list.items[found_index];
 
   int changed = 0;
   int is_done_patched = 0;
@@ -577,15 +580,8 @@ void handle_delete_chore(const AppConfig *config, const char *id, HttpResponse *
     return;
   }
 
-  size_t found_index = list.count;
-  for (size_t i = 0; i < list.count; ++i) {
-    if (strcmp(list.items[i].id, id) == 0) {
-      found_index = i;
-      break;
-    }
-  }
-
-  if (found_index == list.count) {
+  size_t found_index = 0;
+  if (find_chore_index(&list, id, &found_index) != 0) {
     db_free_chores(&list);
     http_response_set_error(response, 404, "Chore not found");
     return;
