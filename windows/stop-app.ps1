@@ -28,6 +28,9 @@ if (Test-Path $pidFile) {
     if ($saved.backendShellPid) {
       if (Stop-IfRunning -PidToStop ([int]$saved.backendShellPid)) { $stoppedAny = $true }
     }
+    if ($saved.frontendPid) {
+      if (Stop-IfRunning -PidToStop ([int]$saved.frontendPid)) { $stoppedAny = $true }
+    }
     if ($saved.frontendShellPid) {
       if (Stop-IfRunning -PidToStop ([int]$saved.frontendShellPid)) { $stoppedAny = $true }
     }

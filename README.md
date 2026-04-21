@@ -55,7 +55,7 @@ python -m http.server 5500 --bind 0.0.0.0
 ```bash
 ./linux/build-backend.sh
 ./backend/bin/roommate_backend 8080
-python3 -m http.server 5500 --bind 0.0.0.0
+nginx
 ```
 
 ### Option 2: Node serve package for frontend
@@ -117,6 +117,8 @@ Each chore object uses this shape:
 - The included backend stores chores and messages in CSV files.
 - No frontend build step is required.
 - Frontend API calls are centralized via shared request helpers in `js/main.js` for readability and consistent error handling.
+- `windows/start-app.ps1` uses Python `http.server` on port `5500`.
+- `linux/start-app.sh` uses Nginx on port `5500`.
 
 ## Backend Source
 
@@ -126,7 +128,7 @@ Build and run instructions are in `backend/README.md`.
 ## Same-WiFi Access Checklist
 
 - Start backend on your PC at port `8080`.
-- Serve frontend with `--bind 0.0.0.0`.
+- Serve frontend on port `5500` (Windows uses Python `http.server`, Linux uses Nginx).
 - Open Windows firewall for your backend/frontend ports (`8080` and `5500`) if needed.
 - Use your PC local IP from your phone browser: `http://<YOUR_PC_IP>:5500`.
 

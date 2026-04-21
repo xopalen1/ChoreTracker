@@ -8,6 +8,8 @@ cd "$ROOT"
 PID_FILE="$ROOT/.app-pids"
 BACKEND_BIN="$ROOT/backend/bin/roommate_backend"
 BACKEND_BUILD_SCRIPT="$SCRIPT_DIR/build-backend.sh"
+NGINX_CONF_FILE="$ROOT/.nginx-roommate.conf"
+LOG_DIR="$ROOT/.logs"
 
 backend_needs_build() {
   if [[ ! -x "$BACKEND_BIN" ]]; then
@@ -26,20 +28,47 @@ if backend_needs_build; then
   bash "$BACKEND_BUILD_SCRIPT"
 fi
 
-PYTHON_CMD=""
-if command -v python3 >/dev/null 2>&1; then
-  PYTHON_CMD="python3"
-elif command -v python >/dev/null 2>&1; then
-  PYTHON_CMD="python"
+if command -v nginx >/dev/null 2>&1; then
+  NGINX_BIN="$(command -v nginx)"
 else
-  echo "Python not found. Install Python or add it to PATH." >&2
+  echo "Nginx not found. Install Nginx and add it to PATH." >&2
   exit 1
 fi
+
+mkdir -p "$LOG_DIR"
+
+cat >"$NGINX_CONF_FILE" <<EOF
+worker_processes 1;
+
+events {
+  worker_connections 1024;
+}
+
+http {
+  default_type application/octet-stream;
+  sendfile on;
+  keepalive_timeout 65;
+
+  server {
+    listen 5500;
+    server_name localhost;
+    root "$ROOT";
+    index index.html;
+
+    location / {
+      try_files \$uri \$uri/ /index.html;
+    }
+
+    access_log "$LOG_DIR/nginx-access.log";
+    error_log "$LOG_DIR/nginx-error.log";
+  }
+}
+EOF
 
 nohup "$BACKEND_BIN" 8080 >/tmp/roommate-backend.log 2>&1 &
 BACKEND_PID=$!
 
-nohup "$PYTHON_CMD" -m http.server 5500 --bind 0.0.0.0 >/tmp/roommate-frontend.log 2>&1 &
+nohup "$NGINX_BIN" -c "$NGINX_CONF_FILE" -g "daemon off;" >/tmp/roommate-frontend.log 2>&1 &
 FRONTEND_PID=$!
 
 cat >"$PID_FILE" <<EOF
@@ -87,7 +116,7 @@ if ! is_valid_lan_ipv4 "$primary_lan_ip" && [[ ${#all_lan_ips[@]} -gt 0 ]]; then
   primary_lan_ip="${all_lan_ips[0]}"
 fi
 
-echo "Started backend on port 8080 and frontend on port 5500."
+echo "Started backend on port 8080 and frontend (Nginx) on port 5500."
 echo "Open locally: http://localhost:5500"
 if is_valid_lan_ipv4 "$primary_lan_ip"; then
   echo "Open on same Wi-Fi: http://$primary_lan_ip:5500"
