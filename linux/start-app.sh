@@ -39,13 +39,13 @@ mkdir -p "$LOG_DIR"
 
 cat >"$NGINX_CONF_FILE" <<EOF
 worker_processes 1;
+pid "$NGINX_PID_FILE";
 
 events {
   worker_connections 1024;
 }
 
 http {
-  pid "$NGINX_PID_FILE";
   default_type application/octet-stream;
   sendfile on;
   keepalive_timeout 65;
