@@ -11,6 +11,11 @@ BACKEND_BUILD_SCRIPT="$SCRIPT_DIR/build-backend.sh"
 NGINX_CONF_FILE="$ROOT/.nginx-roommate.conf"
 NGINX_PID_FILE="$ROOT/.nginx-roommate.pid"
 LOG_DIR="$ROOT/.logs"
+NGINX_RUN_USER="${SUDO_USER:-${USER:-}}"
+
+if [[ -z "$NGINX_RUN_USER" ]]; then
+  NGINX_RUN_USER="www-data"
+fi
 
 backend_needs_build() {
   if [[ ! -x "$BACKEND_BIN" ]]; then
@@ -38,6 +43,7 @@ fi
 mkdir -p "$LOG_DIR"
 
 cat >"$NGINX_CONF_FILE" <<EOF
+user $NGINX_RUN_USER;
 worker_processes 1;
 pid "$NGINX_PID_FILE";
 
@@ -51,8 +57,8 @@ http {
   keepalive_timeout 65;
 
   server {
-    listen 5500;
-    server_name localhost;
+    listen 5500 default_server;
+    server_name _;
     root "$ROOT";
     index index.html;
 
@@ -137,9 +143,10 @@ if ! is_valid_lan_ipv4 "$primary_lan_ip" && [[ ${#all_lan_ips[@]} -gt 0 ]]; then
 fi
 
 echo "Started backend on port 8080 and frontend (Nginx) on port 5500."
-echo "Open locally: http://localhost:5500"
 if is_valid_lan_ipv4 "$primary_lan_ip"; then
   echo "Open on same Wi-Fi: http://$primary_lan_ip:5500"
+else
+  echo "Open on same Wi-Fi using this machine's IP address on port 5500."
 fi
 
 if [[ ${#all_lan_ips[@]} -gt 1 ]]; then
