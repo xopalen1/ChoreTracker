@@ -9,6 +9,7 @@ PID_FILE="$ROOT/.app-pids"
 BACKEND_BIN="$ROOT/backend/bin/roommate_backend"
 BACKEND_BUILD_SCRIPT="$SCRIPT_DIR/build-backend.sh"
 NGINX_CONF_FILE="$ROOT/.nginx-roommate.conf"
+NGINX_PID_FILE="$ROOT/.nginx-roommate.pid"
 LOG_DIR="$ROOT/.logs"
 
 backend_needs_build() {
@@ -28,10 +29,9 @@ if backend_needs_build; then
   bash "$BACKEND_BUILD_SCRIPT"
 fi
 
-if command -v nginx >/dev/null 2>&1; then
-  NGINX_BIN="$(command -v nginx)"
-else
-  echo "Nginx not found. Install Nginx and add it to PATH." >&2
+NGINX_BIN="/usr/sbin/nginx"
+if [[ ! -x "$NGINX_BIN" ]]; then
+  echo "Nginx not found at $NGINX_BIN." >&2
   exit 1
 fi
 
@@ -45,6 +45,7 @@ events {
 }
 
 http {
+  pid "$NGINX_PID_FILE";
   default_type application/octet-stream;
   sendfile on;
   keepalive_timeout 65;
@@ -68,12 +69,17 @@ EOF
 nohup "$BACKEND_BIN" 8080 >/tmp/roommate-backend.log 2>&1 &
 BACKEND_PID=$!
 
-nohup "$NGINX_BIN" -c "$NGINX_CONF_FILE" -g "daemon off;" >/tmp/roommate-frontend.log 2>&1 &
-FRONTEND_PID=$!
+sudo "$NGINX_BIN" -c "$NGINX_CONF_FILE"
+
+FRONTEND_PID=""
+if [[ -f "$NGINX_PID_FILE" ]]; then
+  FRONTEND_PID="$(cat "$NGINX_PID_FILE" 2>/dev/null || true)"
+fi
 
 cat >"$PID_FILE" <<EOF
 backend_pid=$BACKEND_PID
 frontend_pid=$FRONTEND_PID
+frontend_pid_file=$NGINX_PID_FILE
 EOF
 
 is_valid_lan_ipv4() {
