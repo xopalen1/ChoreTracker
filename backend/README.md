@@ -13,6 +13,7 @@ It serves the frontend API contract from `docs/BACKEND_INTEGRATION.md`.
 - CSV persistence for chores and messages
 - Chore state with `isDone`
 - New chores are assigned for **today** by backend rule
+- Weekly balancing: chores are distributed across roommates by due-date week (Monday-Sunday)
 - Readable module split: server, router, handlers, db, json, date
 
 ## Folder Structure

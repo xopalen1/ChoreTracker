@@ -8,6 +8,7 @@ This is a fun, non-serious project.
 ## Features
 
 - Add chores with title, assignee, assigned date, and due date.
+- Backend keeps weekly chore load balanced across roommates by due-date week (Monday-Sunday).
 - Edit due dates after creation.
 - Due date edit history appears only after the first due-date change.
 - Active chores are grouped by assignee.

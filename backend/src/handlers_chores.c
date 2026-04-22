@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "date_utils.h"
 #include "db.h"
@@ -21,6 +22,139 @@ typedef struct {
   int bonus;
   int total_roll;
 } RoommateRoll;
+
+static int parse_iso_date_local(const char *iso_date, struct tm *out) {
+  if (!iso_date || !out) return -1;
+
+  int year = 0;
+  int month = 0;
+  int day = 0;
+  char tail = '\0';
+  if (sscanf(iso_date, "%d-%d-%d%c", &year, &month, &day, &tail) != 3) {
+    return -1;
+  }
+
+  if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return -1;
+  }
+
+  struct tm tmv;
+  memset(&tmv, 0, sizeof(tmv));
+  tmv.tm_year = year - 1900;
+  tmv.tm_mon = month - 1;
+  tmv.tm_mday = day;
+  tmv.tm_hour = 12;
+
+  time_t normalized = mktime(&tmv);
+  if (normalized == (time_t)-1) {
+    return -1;
+  }
+
+  if (tmv.tm_year != year - 1900 || tmv.tm_mon != month - 1 || tmv.tm_mday != day) {
+    return -1;
+  }
+
+  *out = tmv;
+  return 0;
+}
+
+static int week_bounds_from_due_date(const char *due_date, char *week_start, size_t week_start_size, char *week_end, size_t week_end_size) {
+  struct tm tmv;
+  if (parse_iso_date_local(due_date, &tmv) != 0) {
+    return -1;
+  }
+
+  int monday_offset = (tmv.tm_wday + 6) % 7;
+  tmv.tm_mday -= monday_offset;
+  if (mktime(&tmv) == (time_t)-1) {
+    return -1;
+  }
+
+  if (strftime(week_start, week_start_size, "%Y-%m-%d", &tmv) == 0) {
+    return -1;
+  }
+
+  tmv.tm_mday += 6;
+  if (mktime(&tmv) == (time_t)-1) {
+    return -1;
+  }
+
+  if (strftime(week_end, week_end_size, "%Y-%m-%d", &tmv) == 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+static size_t count_roommate_chores_in_week(const ChoreList *list, const char *roommate_name, const char *week_start, const char *week_end, size_t excluded_index) {
+  if (!list || !roommate_name || !week_start || !week_end) {
+    return 0;
+  }
+
+  size_t count = 0;
+  for (size_t i = 0; i < list->count; ++i) {
+    if (i == excluded_index) {
+      continue;
+    }
+
+    const Chore *chore = &list->items[i];
+    if (strcmp(chore->assignee, roommate_name) != 0) {
+      continue;
+    }
+
+    if (strcmp(chore->due_date, week_start) < 0 || strcmp(chore->due_date, week_end) > 0) {
+      continue;
+    }
+
+    ++count;
+  }
+
+  return count;
+}
+
+static int pick_balanced_assignee_for_due_date(const ChoreList *list, const RoommateList *roommates, const char *due_date, const char *preferred_assignee, size_t excluded_index, char *out_assignee, size_t out_assignee_size) {
+  if (!list || !roommates || !due_date || !out_assignee || out_assignee_size == 0) {
+    return -1;
+  }
+
+  if (roommates->count == 0) {
+    return -1;
+  }
+
+  char week_start[DATE_MAX];
+  char week_end[DATE_MAX];
+  if (week_bounds_from_due_date(due_date, week_start, sizeof(week_start), week_end, sizeof(week_end)) != 0) {
+    return -1;
+  }
+
+  size_t min_count = (size_t)-1;
+  size_t preferred_count = (size_t)-1;
+  bool preferred_exists = false;
+  size_t chosen_index = 0;
+
+  for (size_t i = 0; i < roommates->count; ++i) {
+    const char *name = roommates->items[i].name;
+    size_t count = count_roommate_chores_in_week(list, name, week_start, week_end, excluded_index);
+
+    if (preferred_assignee && preferred_assignee[0] != '\0' && strcmp(name, preferred_assignee) == 0) {
+      preferred_exists = true;
+      preferred_count = count;
+    }
+
+    if (count < min_count) {
+      min_count = count;
+      chosen_index = i;
+    }
+  }
+
+  if (preferred_exists && preferred_count == min_count) {
+    snprintf(out_assignee, out_assignee_size, "%s", preferred_assignee);
+    return 0;
+  }
+
+  snprintf(out_assignee, out_assignee_size, "%s", roommates->items[chosen_index].name);
+  return 0;
+}
 
 static int parse_bonus_value(const char *text, size_t len) {
   if (!text || len == 0) return 0;
@@ -376,10 +510,18 @@ void handle_create_chore(const AppConfig *config, const HttpRequest *request, Ht
 
   trim_whitespace_in_place(title);
   trim_whitespace_in_place(assignee);
+  trim_whitespace_in_place(due_date);
   json_get_bool(request->body, "autoReassign", &auto_reassign);
 
   if (title[0] == '\0' || assignee[0] == '\0') {
     http_response_set_error(response, 400, "Title and assignee must not be empty");
+    return;
+  }
+
+  char week_start[DATE_MAX];
+  char week_end[DATE_MAX];
+  if (week_bounds_from_due_date(due_date, week_start, sizeof(week_start), week_end, sizeof(week_end)) != 0) {
+    http_response_set_error(response, 400, "Due date must be in YYYY-MM-DD format");
     return;
   }
 
@@ -413,9 +555,18 @@ void handle_create_chore(const AppConfig *config, const HttpRequest *request, Ht
   Chore *chore = &list.items[list.count];
   memset(chore, 0, sizeof(*chore));
 
+  char balanced_assignee[CHORE_ASSIGNEE_MAX];
+  if (pick_balanced_assignee_for_due_date(&list, &roommates, due_date, assignee, (size_t)-1, balanced_assignee, sizeof(balanced_assignee)) != 0) {
+    db_free_roommates(&roommates);
+    db_free_chores(&list);
+    http_response_set_error(response, 500, "Could not balance assignee for week");
+    return;
+  }
+  db_free_roommates(&roommates);
+
   db_next_chore_id(&list, chore->id, sizeof(chore->id));
   snprintf(chore->title, sizeof(chore->title), "%s", title);
-  snprintf(chore->assignee, sizeof(chore->assignee), "%s", assignee);
+  snprintf(chore->assignee, sizeof(chore->assignee), "%s", balanced_assignee);
 
   // New chores are assigned for today by backend rule.
   date_today_plus_days_iso(0, chore->assigned_date, sizeof(chore->assigned_date));
@@ -464,6 +615,7 @@ void handle_patch_chore(const AppConfig *config, const char *id, const HttpReque
   Chore *found = &list.items[found_index];
 
   int changed = 0;
+  int due_date_patched = 0;
   int is_done_patched = 0;
   bool bool_value = false;
   char due_date[DATE_MAX];
@@ -481,7 +633,16 @@ void handle_patch_chore(const AppConfig *config, const char *id, const HttpReque
   }
 
   if (json_get_string(request->body, "dueDate", due_date, sizeof(due_date))) {
+    trim_whitespace_in_place(due_date);
+    char week_start[DATE_MAX];
+    char week_end[DATE_MAX];
+    if (week_bounds_from_due_date(due_date, week_start, sizeof(week_start), week_end, sizeof(week_end)) != 0) {
+      db_free_chores(&list);
+      http_response_set_error(response, 400, "Due date must be in YYYY-MM-DD format");
+      return;
+    }
     snprintf(found->due_date, sizeof(found->due_date), "%s", due_date);
+    due_date_patched = 1;
     changed = 1;
   }
 
@@ -523,6 +684,16 @@ void handle_patch_chore(const AppConfig *config, const char *id, const HttpReque
     snprintf(found->assignee, sizeof(found->assignee), "%s", winner_name);
     date_today_plus_days_iso(0, found->assigned_date, sizeof(found->assigned_date));
     date_today_plus_days_iso(7, found->due_date, sizeof(found->due_date));
+
+    char balanced_assignee[CHORE_ASSIGNEE_MAX];
+    if (pick_balanced_assignee_for_due_date(&list, &roommates, found->due_date, found->assignee, found_index, balanced_assignee, sizeof(balanced_assignee)) != 0) {
+      db_free_roommates(&roommates);
+      db_free_chores(&list);
+      http_response_set_error(response, 500, "Could not balance assignee for week");
+      return;
+    }
+    snprintf(found->assignee, sizeof(found->assignee), "%s", balanced_assignee);
+
     snprintf(found->due_date_history, sizeof(found->due_date_history), "%s", "[]");
     found->is_done = false;
 
@@ -551,6 +722,33 @@ void handle_patch_chore(const AppConfig *config, const char *id, const HttpReque
     sb_free(&sb);
     db_free_chores(&list);
     return;
+  }
+
+  if (due_date_patched) {
+    RoommateList roommates;
+    if (db_load_roommates(config->roommates_csv_path, &roommates) != 0) {
+      db_free_chores(&list);
+      http_response_set_error(response, 500, "Could not read roommates CSV");
+      return;
+    }
+
+    if (roommates.count == 0) {
+      db_free_roommates(&roommates);
+      db_free_chores(&list);
+      http_response_set_error(response, 400, "At least one roommate is required");
+      return;
+    }
+
+    char balanced_assignee[CHORE_ASSIGNEE_MAX];
+    if (pick_balanced_assignee_for_due_date(&list, &roommates, found->due_date, found->assignee, found_index, balanced_assignee, sizeof(balanced_assignee)) != 0) {
+      db_free_roommates(&roommates);
+      db_free_chores(&list);
+      http_response_set_error(response, 500, "Could not balance assignee for week");
+      return;
+    }
+
+    snprintf(found->assignee, sizeof(found->assignee), "%s", balanced_assignee);
+    db_free_roommates(&roommates);
   }
 
   if (db_save_chores(config->chores_csv_path, &list) != 0) {
