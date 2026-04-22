@@ -62,6 +62,9 @@ http {
     server_name _;
     root "$ROOT";
     index index.html;
+    expires off;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+    add_header Pragma "no-cache" always;
 
     location = /index.html {
       try_files /index.html =404;
