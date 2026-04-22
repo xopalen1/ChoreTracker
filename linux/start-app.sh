@@ -56,8 +56,21 @@ http {
     root "$ROOT";
     index index.html;
 
+    location = /index.html {
+      try_files /index.html =404;
+    }
+
     location / {
       try_files \$uri \$uri/ /index.html;
+    }
+
+    location /api/ {
+      proxy_pass http://127.0.0.1:8080;
+      proxy_http_version 1.1;
+      proxy_set_header Host \$host;
+      proxy_set_header X-Real-IP \$remote_addr;
+      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
     access_log "$LOG_DIR/nginx-access.log";
@@ -69,6 +82,7 @@ EOF
 nohup "$BACKEND_BIN" 8080 >/tmp/roommate-backend.log 2>&1 &
 BACKEND_PID=$!
 
+sudo "$NGINX_BIN" -t -c "$NGINX_CONF_FILE"
 sudo "$NGINX_BIN" -c "$NGINX_CONF_FILE"
 
 FRONTEND_PID=""
