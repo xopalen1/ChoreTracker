@@ -27,14 +27,29 @@ FILES=(
   "$SRC/handlers_roommates.c"
 )
 
+# Debian/glibc visibility fixes:
+# - strtok_r / strnlen need POSIX/XSI feature macros in some toolchains.
+# - strcasecmp is declared in <strings.h>; force include to avoid source edits.
+COMMON_CFLAGS=(
+  -std=c2x
+  -Wall
+  -Wextra
+  -D_DEFAULT_SOURCE
+  -D_POSIX_C_SOURCE=200809L
+  -include
+  strings.h
+  -I
+  "$BACKEND_ROOT/include"
+)
+
 if command -v gcc >/dev/null 2>&1; then
-  gcc -std=c2x -Wall -Wextra -I "$BACKEND_ROOT/include" "${FILES[@]}" -o "$OUT_FILE"
+  gcc "${COMMON_CFLAGS[@]}" "${FILES[@]}" -o "$OUT_FILE"
   echo "Built with GCC: $OUT_FILE"
   exit 0
 fi
 
 if command -v clang >/dev/null 2>&1; then
-  clang -std=c2x -Wall -Wextra -I "$BACKEND_ROOT/include" "${FILES[@]}" -o "$OUT_FILE"
+  clang "${COMMON_CFLAGS[@]}" "${FILES[@]}" -o "$OUT_FILE"
   echo "Built with Clang: $OUT_FILE"
   exit 0
 fi
