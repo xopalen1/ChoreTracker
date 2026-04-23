@@ -1,11 +1,14 @@
 function createMessagesModule(context) {
   const { config, state, el, api, utils } = context;
   const chatOpenStorageKey = "roommate-chat-open-v1";
+  let messagesPollTimer = null;
+  let lastMessagesSnapshot = "";
 
   function bindEvents() {
     syncResponsiveUi();
     bindChatVisibility();
     setupChatResize();
+    startLiveMessagesPolling();
 
     el.chatForm?.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -14,10 +17,8 @@ function createMessagesModule(context) {
 
       if (config.useBackendMessages) {
         try {
-          const created = await api.createMessage(raw);
-          state.chatMessages.push(normalizeChatMessage(created));
-          state.chatMessages = state.chatMessages.slice(-80);
-          renderChat();
+          await api.createMessage(raw);
+          await loadChatMessages();
         } catch (error) {
           console.error(error);
           return;
@@ -35,17 +36,50 @@ function createMessagesModule(context) {
     if (config.useBackendMessages) {
       try {
         const messages = await api.listMessages();
-        state.chatMessages = Array.isArray(messages) ? messages.map(normalizeChatMessage) : [];
+        const normalized = Array.isArray(messages) ? messages.map(normalizeChatMessage) : [];
+        const snapshot = normalized
+          .map((message) => `${message.id}|${message.sentAt}|${message.text}`)
+          .join("\n");
+
+        if (snapshot === lastMessagesSnapshot) {
+          return;
+        }
+
+        lastMessagesSnapshot = snapshot;
+        state.chatMessages = normalized;
       } catch (error) {
         console.error(error);
         state.chatMessages = [];
+        lastMessagesSnapshot = "";
       }
       renderChat();
       return;
     }
 
     state.chatMessages = [];
+    lastMessagesSnapshot = "";
     renderChat();
+  }
+
+  function startLiveMessagesPolling() {
+    if (!config.useBackendMessages) return;
+
+    if (messagesPollTimer) {
+      clearInterval(messagesPollTimer);
+      messagesPollTimer = null;
+    }
+
+    const intervalMs = Number(config.liveMessagesPollMs) > 0 ? Number(config.liveMessagesPollMs) : 1500;
+    messagesPollTimer = setInterval(() => {
+      if (document.hidden) return;
+      loadChatMessages();
+    }, intervalMs);
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        loadChatMessages();
+      }
+    });
   }
 
   function loadChatWidth() {

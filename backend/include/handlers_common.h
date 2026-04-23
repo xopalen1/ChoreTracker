@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #include "http.h"
+#include "models.h"
 #include "string_builder.h"
 
 typedef int (*append_json_item_fn)(StringBuilder *sb, const void *item);
@@ -25,5 +26,7 @@ int handlers_write_json_item(
   size_t initial_capacity,
   int status_code
 );
+
+int handlers_append_message_record(const AppConfig *config, const char *text, Message *out_message);
 
 #endif

@@ -1,5 +1,6 @@
 function createChoresModule(context) {
   const { state, el, api, utils } = context;
+  const RANDOM_ASSIGNEE_VALUE = "__random_d20__";
   let pendingDeleteId = null;
 
   function clearFieldError(input) {
@@ -38,7 +39,7 @@ function createChoresModule(context) {
 
       el.choreForm?.reset();
       if (el.assigneeSelect instanceof HTMLSelectElement) {
-        el.assigneeSelect.value = "";
+        el.assigneeSelect.value = RANDOM_ASSIGNEE_VALUE;
         el.assigneeSelect.selectedIndex = 0;
         clearFieldError(el.assigneeSelect);
       }
@@ -151,12 +152,13 @@ function createChoresModule(context) {
     const title = String(formData.get("title")).trim();
     const assignee = String(formData.get("assignee")).trim();
     const autoReassign = formData.get("autoReassign") === "on";
+    const randomAssign = assignee === RANDOM_ASSIGNEE_VALUE;
 
     const isKnownRoommate = state.roommates.some(
       (roommate) => roommate.name.toLocaleLowerCase() === assignee.toLocaleLowerCase(),
     );
 
-    if (!isKnownRoommate) {
+    if (!randomAssign && !isKnownRoommate) {
       showFieldError(el.assigneeSelect, "Vyber existujuceho spolubyvajuceho.");
       return;
     }
@@ -169,6 +171,7 @@ function createChoresModule(context) {
       assignee,
       dueDate: dueDateIso,
       autoReassign,
+      randomAssign,
     };
 
     try {
@@ -469,14 +472,21 @@ function createChoresModule(context) {
     const previousValue = el.assigneeSelect.value;
     el.assigneeSelect.innerHTML = "";
 
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.disabled = true;
-    placeholder.selected = true;
-    placeholder.textContent = state.roommates.length
-      ? "Vyber spolubývajúceho"
-      : "Najprv pridaj spolubývajúcich";
-    el.assigneeSelect.append(placeholder);
+    if (!state.roommates.length) {
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      placeholder.textContent = "Najprv pridaj spolubývajúcich";
+      el.assigneeSelect.append(placeholder);
+      el.assigneeSelect.disabled = true;
+      return;
+    }
+
+    const randomOption = document.createElement("option");
+    randomOption.value = RANDOM_ASSIGNEE_VALUE;
+    randomOption.textContent = "Náhodne (kocka d20, predvolené)";
+    el.assigneeSelect.append(randomOption);
 
     state.roommates
       .slice()
@@ -488,11 +498,13 @@ function createChoresModule(context) {
         el.assigneeSelect.append(option);
       });
 
-    if (state.roommates.some((roommate) => roommate.name === previousValue)) {
+    if (previousValue === RANDOM_ASSIGNEE_VALUE || state.roommates.some((roommate) => roommate.name === previousValue)) {
       el.assigneeSelect.value = previousValue;
+    } else {
+      el.assigneeSelect.value = RANDOM_ASSIGNEE_VALUE;
     }
 
-    el.assigneeSelect.disabled = state.roommates.length === 0;
+    el.assigneeSelect.disabled = false;
   }
 
   function normalizeChore(chore) {

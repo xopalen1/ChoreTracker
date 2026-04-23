@@ -1,10 +1,7 @@
 #include "handlers.h"
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include "date_utils.h"
 #include "db.h"
 #include "handlers_common.h"
 #include "json_utils.h"
@@ -48,35 +45,11 @@ void handle_create_message(const AppConfig *config, const HttpRequest *request, 
     return;
   }
 
-  MessageList list;
-  if (db_load_messages(config->messages_csv_path, &list) != 0) {
-    http_response_set_error(response, 500, "Could not read messages CSV");
-    return;
-  }
-
-  Message *bigger = (Message *)realloc(list.items, (list.count + 1) * sizeof(Message));
-  if (!bigger) {
-    db_free_messages(&list);
-    http_response_set_error(response, 500, "Out of memory");
-    return;
-  }
-  list.items = bigger;
-
-  Message *message = &list.items[list.count];
-  memset(message, 0, sizeof(*message));
-
-  db_next_message_id(&list, message->id, sizeof(message->id));
-  snprintf(message->text, sizeof(message->text), "%s", text);
-  date_now_iso_datetime(message->sent_at, sizeof(message->sent_at));
-
-  list.count += 1;
-
-  if (db_save_messages(config->messages_csv_path, &list) != 0) {
-    db_free_messages(&list);
+  Message created;
+  if (handlers_append_message_record(config, text, &created) != 0) {
     http_response_set_error(response, 500, "Could not write messages CSV");
     return;
   }
 
-  handlers_write_json_item(response, message, append_message_json, 256, 201);
-  db_free_messages(&list);
+  handlers_write_json_item(response, &created, append_message_json, 256, 201);
 }

@@ -21,6 +21,7 @@ FILES=(
   "$SRC/text_utils.c"
   "$SRC/string_builder.c"
   "$SRC/date_utils.c"
+  "$SRC/reassignment.c"
   "$SRC/handlers_common.c"
   "$SRC/handlers_chores.c"
   "$SRC/handlers_messages.c"

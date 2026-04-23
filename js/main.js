@@ -3,6 +3,7 @@ const config = {
   locale: "sk-SK",
   useBackendChores: true,
   useBackendMessages: true,
+  liveMessagesPollMs: 1500,
   storageKeys: {
     chatWidth: "roommate-chat-width-v1",
     chatHeight: "roommate-chat-height-v1",
