@@ -2,6 +2,8 @@ function createChoresModule(context) {
   const { state, el, api, utils } = context;
   const RANDOM_ASSIGNEE_VALUE = "__random_d20__";
   let pendingDeleteId = null;
+  let choresPollTimer = null;
+  let lastChoresSnapshot = "";
 
   function clearFieldError(input) {
     if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLSelectElement)) {
@@ -19,6 +21,8 @@ function createChoresModule(context) {
   }
 
   function bindEvents() {
+    startLiveChoresPolling();
+
     el.filterStatus?.addEventListener("change", () => {
       state.filterStatus = el.filterStatus.value;
       render();
@@ -113,13 +117,45 @@ function createChoresModule(context) {
   async function loadChores() {
     try {
       const fetched = await api.listChores();
-      state.chores = Array.isArray(fetched) ? fetched.map(normalizeChore) : [];
+      const normalized = Array.isArray(fetched) ? fetched.map(normalizeChore) : [];
+      const snapshot = normalized
+        .map((chore) => `${chore.id}|${chore.title}|${chore.assignee}|${chore.dueDate}|${chore.assignedDate}|${chore.isDone}`)
+        .join("\n");
+
+      if (snapshot === lastChoresSnapshot) {
+        return;
+      }
+
+      lastChoresSnapshot = snapshot;
+      state.chores = normalized;
     } catch (error) {
       console.error(error);
       state.chores = [];
+      lastChoresSnapshot = "";
     }
 
     render();
+  }
+
+  function startLiveChoresPolling() {
+    if (!context.config.useBackendChores) return;
+
+    if (choresPollTimer) {
+      clearInterval(choresPollTimer);
+      choresPollTimer = null;
+    }
+
+    const intervalMs = Number(context.config.liveChoresPollMs) > 0 ? Number(context.config.liveChoresPollMs) : 1500;
+    choresPollTimer = setInterval(() => {
+      if (document.hidden) return;
+      loadChores();
+    }, intervalMs);
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        loadChores();
+      }
+    });
   }
 
   async function loadRoommates() {
